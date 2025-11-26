@@ -5,6 +5,18 @@ import { ChatApiRepository } from '../../infrastructure/api/ChatApiRepository.js
 import { Message } from '../../domain/entities/Message.js';
 
 /**
+ * Generates a proper UUID v4
+ * @returns {string} UUID string
+ */
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+/**
  * Hook personalizado para gerenciar o estado do chat
  * @returns {Object} - Estado e funções do chat
  */
