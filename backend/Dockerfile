@@ -39,11 +39,8 @@ RUN npm ci --only=production && npm cache clean --force
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Copy public assets
-COPY public/ ./public/
-
-# Create data directory for SQLite (dev fallback) and ensure permissions
-RUN mkdir -p data && chown -R nestjs:nodejs data public /app
+# Create data and public/images directories and ensure permissions
+RUN mkdir -p data public/images && chown -R nestjs:nodejs data public /app
 
 # Switch to non-root user
 USER nestjs

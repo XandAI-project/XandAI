@@ -20,7 +20,10 @@ async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
   // Configurar servir arquivos estáticos (imagens)
-  app.useStaticAssets(join(__dirname, '..', 'public', 'images'), {
+  // Use process.cwd() for consistent path in Docker container
+  const imagesPath = join(process.cwd(), 'public', 'images');
+  logger.log(`📸 Serving images from: ${imagesPath}`);
+  app.useStaticAssets(imagesPath, {
     prefix: '/images/',
     index: false,
   });
