@@ -9,7 +9,8 @@ import { Message } from '../../domain/entities/Message.js';
 export class ChatApiRepository extends ChatRepository {
   constructor() {
     super();
-    this.baseURL = 'http://localhost:3001/api/v1';
+    // Use relative URL for API - works with nginx proxy
+    this.baseURL = '/api/v1';
   }
 
   /**

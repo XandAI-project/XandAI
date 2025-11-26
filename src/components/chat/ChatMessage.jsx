@@ -167,7 +167,7 @@ const ChatMessage = ({ message, showAvatar = true, onImageGenerated }) => {
                         >
                           <CardMedia
                             component="img"
-                            image={`http://localhost:3001${attachment.url}`}
+                            image={attachment.url}
                             alt={`Imagem anexada: ${attachment.filename}`}
                             sx={{ 
                               width: '100%',

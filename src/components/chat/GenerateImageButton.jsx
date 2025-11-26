@@ -35,7 +35,7 @@ const GenerateImageButton = ({ chatResponse, messageId, compact = false, onImage
   };
 
   const saveImageToHistory = async (messageId, imageUrl, filename, originalPrompt) => {
-    const response = await fetch(`http://localhost:3001/api/v1/chat/messages/${messageId}/attachments/image`, {
+    const response = await fetch(`/api/v1/chat/messages/${messageId}/attachments/image`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -78,7 +78,7 @@ const GenerateImageButton = ({ chatResponse, messageId, compact = false, onImage
     try {
       const prompt = extractPromptFromResponse(chatResponse);
       
-      const response = await fetch('http://localhost:3001/api/v1/stable-diffusion/generate', {
+      const response = await fetch('/api/v1/stable-diffusion/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -104,7 +104,7 @@ const GenerateImageButton = ({ chatResponse, messageId, compact = false, onImage
       const result = await response.json();
       
       if (result.success) {
-        const imageUrl = `http://localhost:3001${result.imageUrl}`;
+        const imageUrl = result.imageUrl;
         setGeneratedImage(imageUrl);
         
         // Salva a imagem no histórico se temos messageId

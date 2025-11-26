@@ -77,7 +77,7 @@ export class StableDiffusionService {
     if (!token) return false;
 
     try {
-      const response = await fetch('http://localhost:3001/api/v1/auth/verify', {
+      const response = await fetch('/api/v1/auth/verify', {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -113,7 +113,7 @@ export class StableDiffusionService {
         throw new Error('URL não configurada');
       }
 
-      const response = await fetch('http://localhost:3001/api/v1/stable-diffusion/test-connection', {
+      const response = await fetch('/api/v1/stable-diffusion/test-connection', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -145,7 +145,7 @@ export class StableDiffusionService {
    */
   async getAvailableModels() {
     try {
-      const response = await fetch(`http://localhost:3001/api/v1/stable-diffusion/models?baseUrl=${encodeURIComponent(this.config.baseUrl)}&sdToken=${encodeURIComponent(this.config.token || '')}`, {
+      const response = await fetch(`/api/v1/stable-diffusion/models?baseUrl=${encodeURIComponent(this.config.baseUrl)}&sdToken=${encodeURIComponent(this.config.token || '')}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json'
@@ -189,7 +189,7 @@ export class StableDiffusionService {
         sdToken: this.config.token || null
       };
 
-      const response = await fetch('http://localhost:3001/api/v1/stable-diffusion/generate', {
+      const response = await fetch('/api/v1/stable-diffusion/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

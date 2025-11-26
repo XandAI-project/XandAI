@@ -3,7 +3,10 @@
  */
 class AuthService {
   constructor() {
-    this.baseURL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api/v1';
+    // Use relative URL for API - works with nginx proxy
+    this.baseURL = process.env.REACT_APP_API_BASE_URL 
+      ? `${process.env.REACT_APP_API_BASE_URL}/api/v1`
+      : '/api/v1';
     this.tokenKey = 'xandai_auth_token';
     this.userKey = 'xandai_user_data';
   }
