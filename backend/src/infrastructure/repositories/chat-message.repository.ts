@@ -68,7 +68,8 @@ export class ChatMessageRepository implements IChatMessageRepository {
       .createQueryBuilder('message')
       .leftJoinAndSelect('message.chatSession', 'session')
       .where('session.userId = :userId', { userId })
-      .orderBy('message.createdAt', 'DESC')
+      .andWhere('session.status = :status', { status: 'active' }) // Only from active sessions
+      .orderBy('message.createdAt', 'ASC') // Chronological order (oldest first)
       .limit(limit)
       .getMany();
   }

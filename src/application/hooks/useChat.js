@@ -350,6 +350,13 @@ export const useChat = () => {
       return message;
     });
 
+    // Sort messages chronologically (oldest first) to ensure correct order
+    formattedMessages.sort((a, b) => {
+      const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      return timeA - timeB;
+    });
+
     setMessages(formattedMessages);
     setError(null);
   }, []);

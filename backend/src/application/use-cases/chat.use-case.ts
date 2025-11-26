@@ -90,6 +90,13 @@ export class ChatUseCase {
       throw new ForbiddenException('Acesso negado à sessão');
     }
 
+    // Garantir que as mensagens estejam ordenadas cronologicamente (ASC)
+    if (session.messages && session.messages.length > 0) {
+      session.messages.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+    }
+
     return this.mapSessionToDto(session, true);
   }
 

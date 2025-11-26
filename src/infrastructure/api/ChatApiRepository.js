@@ -170,7 +170,7 @@ export class ChatApiRepository extends ChatRepository {
       const messages = data.messages || [];
 
       // Converte mensagens do backend para o formato do frontend
-      return messages.map(msg => {
+      const formattedMessages = messages.map(msg => {
         const message = new Message(
           msg.id,
           msg.content,
@@ -191,6 +191,15 @@ export class ChatApiRepository extends ChatRepository {
 
         return message;
       });
+
+      // Ordena mensagens cronologicamente (mais antigas primeiro)
+      formattedMessages.sort((a, b) => {
+        const timeA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+        const timeB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+        return timeA - timeB;
+      });
+
+      return formattedMessages;
     } catch (error) {
       console.error('Erro ao carregar histórico do backend:', error);
       return []; // Retorna array vazio em caso de erro
@@ -198,7 +207,7 @@ export class ChatApiRepository extends ChatRepository {
   }
 
   /**
-   * Limpa o histórico de mensagens (arquiva todas as sessões)
+   * Limpa o histórico de mensagens (deleta todas as sessões)
    * @returns {Promise<void>}
    */
   async clearHistory() {
@@ -211,7 +220,7 @@ export class ChatApiRepository extends ChatRepository {
         return;
       }
 
-      // Get all sessions and archive them
+      // Get all sessions and delete them
       const response = await fetch(`${this.baseURL}/chat/sessions`, {
         method: 'GET',
         headers: this.getAuthHeaders()
@@ -221,16 +230,17 @@ export class ChatApiRepository extends ChatRepository {
         const data = await response.json();
         const sessions = data.sessions || data || [];
         
-        // Archive each session
+        // Delete each session
         for (const session of sessions) {
-          if (session.id && session.status === 'active') {
+          if (session.id) {
             try {
-              await fetch(`${this.baseURL}/chat/sessions/${session.id}/archive`, {
-                method: 'PUT',
+              await fetch(`${this.baseURL}/chat/sessions/${session.id}`, {
+                method: 'DELETE',
                 headers: this.getAuthHeaders()
               });
+              console.log(`Deleted session ${session.id}`);
             } catch (err) {
-              console.warn(`Failed to archive session ${session.id}:`, err);
+              console.warn(`Failed to delete session ${session.id}:`, err);
             }
           }
         }
@@ -239,7 +249,7 @@ export class ChatApiRepository extends ChatRepository {
       // Clear current session ID
       this.currentSessionId = null;
       
-      console.log('Histórico limpo - todas as sessões foram arquivadas');
+      console.log('Histórico limpo - todas as sessões foram deletadas');
     } catch (error) {
       console.error('Erro ao limpar histórico:', error);
       // Still clear local state even if backend fails
