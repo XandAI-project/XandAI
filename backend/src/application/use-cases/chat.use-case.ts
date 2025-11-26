@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Inject } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException, Inject, Logger } from '@nestjs/common';
 
 import { IChatSessionRepository } from '../../domain/repositories/chat-session.repository.interface';
 import { IChatMessageRepository } from '../../domain/repositories/chat-message.repository.interface';
@@ -6,6 +6,7 @@ import { IUserRepository } from '../../domain/repositories/user.repository.inter
 import { ChatSession } from '../../domain/entities/chat-session.entity';
 import { ChatMessage } from '../../domain/entities/chat-message.entity';
 import { OllamaService } from '../../infrastructure/services/ollama.service';
+import { StableDiffusionService } from '../../infrastructure/services/stable-diffusion.service';
 import { 
   CreateChatSessionDto, 
   UpdateChatSessionDto, 
@@ -22,6 +23,8 @@ import {
  */
 @Injectable()
 export class ChatUseCase {
+  private readonly logger = new Logger(ChatUseCase.name);
+
   constructor(
     @Inject('IChatSessionRepository')
     private readonly chatSessionRepository: IChatSessionRepository,
@@ -30,6 +33,7 @@ export class ChatUseCase {
     @Inject('IUserRepository')
     private readonly userRepository: IUserRepository,
     private readonly ollamaService: OllamaService,
+    private readonly stableDiffusionService: StableDiffusionService,
   ) {}
 
   /**
@@ -191,11 +195,17 @@ export class ChatUseCase {
       session.id, 
       aiResponse.metadata
     );
+    
+    // Add attachments if present (e.g., generated images)
+    if (aiResponse.attachments && aiResponse.attachments.length > 0) {
+      assistantMessageData.attachments = aiResponse.attachments;
+    }
+    
     const assistantMessage = await this.chatMessageRepository.create(assistantMessageData);
 
     return {
       userMessage: this.mapMessageToDto(userMessage),
-      assistantMessage: this.mapMessageToDto(assistantMessage),
+      assistantMessage: this.mapMessageWithAttachmentsToDto(assistantMessage),
       session: this.mapSessionToDto(session),
     };
   }
@@ -256,14 +266,22 @@ export class ChatUseCase {
   }
 
   /**
-   * Gera resposta da IA (simulação)
+   * Gera resposta da IA, incluindo detecção de pedidos de imagem
    */
   private async generateAIResponse(
     userMessage: string, 
     options: SendMessageDto,
     messageHistory: ChatMessage[] = []
-  ): Promise<{ content: string; metadata: any }> {
+  ): Promise<{ content: string; metadata: any; attachments?: any[] }> {
     try {
+      // Check if this is an image generation request
+      const isImageRequest = this.ollamaService.isImageGenerationRequest(userMessage);
+      
+      if (isImageRequest) {
+        return await this.handleImageGenerationRequest(userMessage, options);
+      }
+
+      // Regular text response
       // Prepara o contexto da conversa incluindo histórico
       const context = this.buildConversationContext(messageHistory, userMessage);
       
@@ -303,6 +321,93 @@ export class ChatUseCase {
           error: true,
           originalError: error.message,
           usedHistory: false
+        }
+      };
+    }
+  }
+
+  /**
+   * Handles image generation requests
+   */
+  private async handleImageGenerationRequest(
+    userMessage: string,
+    options: SendMessageDto
+  ): Promise<{ content: string; metadata: any; attachments?: any[] }> {
+    this.logger.log(`Processing image generation request: "${userMessage.substring(0, 50)}..."`);
+
+    // Check if SD is available
+    const sdStatus = this.stableDiffusionService.getConfigStatus();
+    
+    if (!sdStatus.enabled) {
+      return {
+        content: '🎨 I detected you want an image, but Stable Diffusion is not enabled on this server. Please ask your administrator to set up the image generation service.',
+        metadata: {
+          model: 'system',
+          imageGeneration: false,
+          reason: 'SD not enabled'
+        }
+      };
+    }
+
+    try {
+      // Generate optimized SD prompt using Ollama
+      this.logger.log('Generating optimized SD prompt...');
+      const promptData = await this.ollamaService.generateImagePrompt(userMessage);
+      
+      this.logger.log(`SD Prompt: "${promptData.prompt.substring(0, 100)}..."`);
+      this.logger.log(`Negative: "${promptData.negativePrompt.substring(0, 50)}..."`);
+
+      // Generate image with Stable Diffusion
+      this.logger.log('Calling Stable Diffusion...');
+      const result = await this.stableDiffusionService.generateImage({
+        prompt: promptData.prompt,
+        negativePrompt: promptData.negativePrompt,
+        config: {
+          baseUrl: sdStatus.baseUrl,
+          model: sdStatus.defaultModel,
+          enabled: true,
+          width: 1024,
+          height: 1024,
+          steps: 25,
+          cfgScale: 7,
+        }
+      });
+
+      if (result.success && result.imageUrl) {
+        this.logger.log(`Image generated successfully: ${result.filename}`);
+        
+        return {
+          content: `🎨 Here's the image I generated for you!\n\n**Prompt used:** ${promptData.prompt.substring(0, 200)}${promptData.prompt.length > 200 ? '...' : ''}`,
+          metadata: {
+            model: 'stable-diffusion',
+            imageGeneration: true,
+            sdModel: sdStatus.defaultModel,
+            prompt: promptData.prompt,
+            negativePrompt: promptData.negativePrompt,
+            processingTime: result.metadata?.processingTime || 0,
+          },
+          attachments: [{
+            type: 'image',
+            url: result.imageUrl,
+            filename: result.filename,
+            originalPrompt: promptData.prompt,
+            metadata: result.metadata
+          }]
+        };
+      } else {
+        throw new Error(result.error || 'Unknown image generation error');
+      }
+
+    } catch (error) {
+      this.logger.error(`Image generation failed: ${error.message}`);
+      
+      return {
+        content: `🎨 I tried to generate an image for you, but encountered an error: ${error.message}\n\nPlease try again or rephrase your request.`,
+        metadata: {
+          model: 'stable-diffusion',
+          imageGeneration: false,
+          error: true,
+          errorMessage: error.message
         }
       };
     }

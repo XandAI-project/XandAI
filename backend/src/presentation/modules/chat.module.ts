@@ -11,6 +11,7 @@ import { ChatMessageRepository } from '../../infrastructure/repositories/chat-me
 import { ChatController } from '../controllers/chat.controller';
 import { AuthModule } from './auth.module';
 import { OllamaService } from '../../infrastructure/services/ollama.service';
+import { StableDiffusionService } from '../../infrastructure/services/stable-diffusion.service';
 
 /**
  * Módulo de chat
@@ -24,6 +25,7 @@ import { OllamaService } from '../../infrastructure/services/ollama.service';
   providers: [
     ChatUseCase,
     OllamaService,
+    StableDiffusionService,
     {
       provide: 'IUserRepository',
       useClass: UserRepository,
