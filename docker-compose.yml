@@ -30,7 +30,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:3000}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
       JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-me}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
       DB_HOST: postgres
@@ -60,8 +60,6 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-      args:
-        REACT_APP_API_BASE_URL: ${REACT_APP_API_BASE_URL:-http://localhost:3001}
     container_name: xandai-frontend
     restart: unless-stopped
     ports:

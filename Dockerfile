@@ -17,11 +17,7 @@ RUN npm ci --legacy-peer-deps
 COPY public/ ./public/
 COPY src/ ./src/
 
-# Build argument for API URL
-ARG REACT_APP_API_BASE_URL=http://localhost:3001
-ENV REACT_APP_API_BASE_URL=$REACT_APP_API_BASE_URL
-
-# Build the application
+# Build the application (uses relative URLs via nginx proxy)
 RUN npm run build
 
 # Stage 2: Serve with Nginx
