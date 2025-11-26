@@ -26,8 +26,8 @@ services:
     environment:
       # Auto-update on startup
       AUTO_UPDATE: "false"
-      # Forge startup arguments - API only mode (no GUI)
-      FORGE_ARGS: "--no-gui --api --listen --port 7860 --xformers"
+      # Forge startup arguments - API only mode (no WebUI)
+      FORGE_ARGS: "--nowebui --api --listen --port 7860 --xformers"
       # Optional: HuggingFace token for downloading models
       HF_TOKEN: ${HF_TOKEN:-}
       # Optional: Civitai token for downloading models
