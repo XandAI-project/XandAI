@@ -35,8 +35,25 @@ export class ChatService {
       console.log('Enviando mensagem para o backend (com detecção de imagem)...');
       const assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
       
+      // Handle response - can be string or object with attachments
+      let content, attachments;
+      if (typeof assistantResponse === 'object' && assistantResponse.content !== undefined) {
+        content = assistantResponse.content;
+        attachments = assistantResponse.attachments;
+        console.log('🎨 Response contains attachments:', attachments);
+      } else {
+        content = assistantResponse;
+        attachments = null;
+      }
+      
       // Cria a mensagem do assistente
-      const assistantMessage = Message.createAssistantMessage(assistantResponse);
+      const assistantMessage = Message.createAssistantMessage(content);
+      
+      // Add attachments if present (e.g., generated images)
+      if (attachments && attachments.length > 0) {
+        assistantMessage.attachments = attachments;
+        console.log('🎨 Added attachments to message:', assistantMessage.attachments);
+      }
       
       // Adiciona à sessão
       this.currentSession.addMessage(assistantMessage);
@@ -63,10 +80,27 @@ export class ChatService {
       // The backend will process the message, detect if it's an image request, and respond accordingly
       console.log('Enviando mensagem para o backend (com detecção de imagem)...');
       const assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
-      console.log('Resposta do backend recebida');
+      console.log('Resposta do backend recebida:', assistantResponse);
+      
+      // Handle response - can be string or object with attachments
+      let content, attachments;
+      if (typeof assistantResponse === 'object' && assistantResponse.content !== undefined) {
+        content = assistantResponse.content;
+        attachments = assistantResponse.attachments;
+        console.log('🎨 Response contains attachments:', attachments);
+      } else {
+        content = assistantResponse;
+        attachments = null;
+      }
       
       // Cria a mensagem do assistente
-      const assistantMessage = Message.createAssistantMessage(assistantResponse);
+      const assistantMessage = Message.createAssistantMessage(content);
+      
+      // Add attachments if present (e.g., generated images)
+      if (attachments && attachments.length > 0) {
+        assistantMessage.attachments = attachments;
+        console.log('🎨 Added attachments to message:', assistantMessage.attachments);
+      }
 
       return {
         assistantMessage

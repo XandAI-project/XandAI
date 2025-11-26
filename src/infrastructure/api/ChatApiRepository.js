@@ -105,18 +105,25 @@ export class ChatApiRepository extends ChatRepository {
         return fullResponse;
       } else {
         const result = await response.json();
+        console.log('Backend response:', result);
         
         // Update current session from response
         if (result.session && result.session.id) {
           this.currentSessionId = result.session.id;
         }
         
-        // Extract assistant message content
+        // Extract assistant message content and attachments
         const assistantContent = result.assistantMessage?.content || result.content || result.message || 'Resposta recebida';
+        const attachments = result.assistantMessage?.attachments || null;
         
-        // If there are attachments (like generated images), include them
-        if (result.assistantMessage?.attachments) {
-          console.log('Received attachments:', result.assistantMessage.attachments);
+        // If there are attachments (like generated images), return an object
+        if (attachments && attachments.length > 0) {
+          console.log('🎨 Received image attachments:', attachments);
+          // Return object with content and attachments
+          return {
+            content: assistantContent,
+            attachments: attachments
+          };
         }
         
         return assistantContent;
