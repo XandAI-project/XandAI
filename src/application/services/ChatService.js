@@ -29,40 +29,17 @@ export class ChatService {
       
       // Adiciona à sessão
       this.currentSession.addMessage(userMessage);
-      
-      // Salva a mensagem do usuário
-      await this.chatRepository.saveMessage(userMessage);
 
-      // Verifica se deve usar OLLAMA ou mock
-      let assistantResponse;
-      const ollamaConfig = await this.ollamaService.getConfiguration();
-      
-      if (ollamaConfig.enabled && ollamaConfig.selectedModel) {
-        try {
-          // Tenta usar OLLAMA com streaming se callback fornecido
-          assistantResponse = await this.ollamaService.sendMessage(
-            messageContent, 
-            {}, // options
-            onToken
-          );
-        } catch (ollamaError) {
-          console.warn('Erro no OLLAMA, fallback para mock:', ollamaError);
-          // Fallback para mock em caso de erro
-          assistantResponse = await this.chatRepository.sendMessage(messageContent);
-        }
-      } else {
-        // Usa mock se OLLAMA não estiver configurado
-        assistantResponse = await this.chatRepository.sendMessage(messageContent);
-      }
+      // ALWAYS use backend API - it handles Ollama communication AND image generation detection
+      // The backend will process the message, detect if it's an image request, and respond accordingly
+      console.log('Enviando mensagem para o backend (com detecção de imagem)...');
+      const assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
       
       // Cria a mensagem do assistente
       const assistantMessage = Message.createAssistantMessage(assistantResponse);
       
       // Adiciona à sessão
       this.currentSession.addMessage(assistantMessage);
-      
-      // Salva a mensagem do assistente
-      await this.chatRepository.saveMessage(assistantMessage);
 
       return {
         userMessage,
@@ -82,36 +59,11 @@ export class ChatService {
    */
   async sendMessageWithoutUserSave(messageContent, onToken = null) {
     try {
-      // Verifica se deve usar OLLAMA ou mock
-      let assistantResponse;
-      const ollamaConfig = await this.ollamaService.getConfiguration();
-      
-      console.log('Configuração Ollama:', {
-        enabled: ollamaConfig.enabled,
-        selectedModel: ollamaConfig.selectedModel,
-        baseUrl: ollamaConfig.baseUrl
-      });
-      
-      if (ollamaConfig.enabled && ollamaConfig.selectedModel) {
-        try {
-          console.log('Enviando mensagem para OLLAMA com streaming:', !!onToken);
-          // Tenta usar OLLAMA com streaming se callback fornecido
-          assistantResponse = await this.ollamaService.sendMessage(
-            messageContent, 
-            {}, // options
-            onToken
-          );
-          console.log('Resposta do OLLAMA recebida');
-        } catch (ollamaError) {
-          console.warn('Erro no OLLAMA, fallback para mock:', ollamaError);
-          // Fallback para mock em caso de erro, com streaming se disponível
-          assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
-        }
-      } else {
-        console.log('Usando mock (OLLAMA não configurado)');
-        // Usa mock se OLLAMA não estiver configurado, com streaming se disponível
-        assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
-      }
+      // ALWAYS use backend API - it handles Ollama communication AND image generation detection
+      // The backend will process the message, detect if it's an image request, and respond accordingly
+      console.log('Enviando mensagem para o backend (com detecção de imagem)...');
+      const assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
+      console.log('Resposta do backend recebida');
       
       // Cria a mensagem do assistente
       const assistantMessage = Message.createAssistantMessage(assistantResponse);

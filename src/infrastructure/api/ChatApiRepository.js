@@ -48,12 +48,23 @@ export class ChatApiRepository extends ChatRepository {
         throw new Error('Token de autenticação não encontrado');
       }
 
-      const response = await fetch(`${this.baseURL}/chat/send`, {
+      // Get Ollama config for model selection
+      const ollamaConfig = JSON.parse(localStorage.getItem('xandai_ollama_config') || '{}');
+
+      const response = await fetch(`${this.baseURL}/chat/messages`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
           content: message,
-          streaming: !!onToken
+          sessionId: this.currentSessionId || null,
+          model: ollamaConfig.selectedModel || 'llama3.2',
+          temperature: 0.7,
+          metadata: {
+            ollamaConfig: {
+              baseUrl: ollamaConfig.baseUrl,
+              enabled: ollamaConfig.enabled
+            }
+          }
         })
       });
 
@@ -94,7 +105,21 @@ export class ChatApiRepository extends ChatRepository {
         return fullResponse;
       } else {
         const result = await response.json();
-        return result.content || result.message || 'Resposta recebida';
+        
+        // Update current session from response
+        if (result.session && result.session.id) {
+          this.currentSessionId = result.session.id;
+        }
+        
+        // Extract assistant message content
+        const assistantContent = result.assistantMessage?.content || result.content || result.message || 'Resposta recebida';
+        
+        // If there are attachments (like generated images), include them
+        if (result.assistantMessage?.attachments) {
+          console.log('Received attachments:', result.assistantMessage.attachments);
+        }
+        
+        return assistantContent;
       }
     } catch (error) {
       console.error('Erro ao enviar mensagem para o backend:', error);

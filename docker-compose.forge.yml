@@ -37,10 +37,10 @@ services:
     volumes:
       # Persistent workspace
       - forge_workspace:/workspace
-      # Models directory - mount your local models here
-      - forge_models:/stable-diffusion-webui-forge/models
+      # Models directory - mount your local models here (correct path with /opt)
+      - forge_models:/opt/stable-diffusion-webui-forge/models
       # Outputs directory
-      - forge_outputs:/stable-diffusion-webui-forge/outputs
+      - forge_outputs:/opt/stable-diffusion-webui-forge/outputs
     deploy:
       resources:
         reservations:
