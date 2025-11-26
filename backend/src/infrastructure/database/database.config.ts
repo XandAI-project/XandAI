@@ -20,9 +20,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       password: configService.get('DB_PASSWORD', 'password'),
       database: configService.get('DB_NAME', 'xandai'),
       entities: [User, ChatSession, ChatMessage],
-      synchronize: false, // Usar migrations em produção
-      migrations: ['dist/infrastructure/database/migrations/*.js'],
-      migrationsRun: true,
+      synchronize: true, // Auto-create tables from entities
       logging: configService.get('DB_LOGGING', 'false') === 'true',
       ssl: configService.get('DB_SSL', 'false') === 'true' ? {
         rejectUnauthorized: false,
