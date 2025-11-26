@@ -342,57 +342,72 @@ export class ChatUseCase {
   ): Promise<{ content: string; metadata: any; attachments?: any[] }> {
     this.logger.log(`Processing image generation request: "${userMessage.substring(0, 50)}..."`);
 
-    // Check if SD is available
-    const sdStatus = this.stableDiffusionService.getConfigStatus();
-    this.logger.log(`SD Status: enabled=${sdStatus.enabled}, available=${sdStatus.available}, baseUrl=${sdStatus.baseUrl}, model=${sdStatus.defaultModel}`);
+    // Try multiple Forge URLs (internal Docker network, then localhost)
+    const forgeUrls = [
+      'http://forge:17860',           // Internal Docker network
+      'http://xandai-forge:17860',    // Container name
+      'http://host.docker.internal:7865', // Docker host
+      'http://localhost:7865',        // Local
+    ];
     
-    // Try to connect even if not marked as enabled (auto-detect)
-    if (!sdStatus.enabled && !sdStatus.available) {
-      // Try to auto-detect Forge
-      this.logger.log('SD not enabled, trying to auto-detect Forge...');
+    let workingUrl: string | null = null;
+    
+    for (const url of forgeUrls) {
+      this.logger.log(`Trying Forge at: ${url}`);
       try {
-        const testResult = await this.stableDiffusionService.testConnection(sdStatus.baseUrl);
-        if (!testResult.success) {
-          return {
-            content: '🎨 I detected you want an image, but Stable Diffusion is not available. Please ensure Forge is running and configured.',
-            metadata: {
-              model: 'system',
-              imageGeneration: false,
-              reason: 'SD not available',
-              testResult
-            }
-          };
+        const testResult = await this.stableDiffusionService.testConnection(url);
+        if (testResult.success) {
+          workingUrl = url;
+          this.logger.log(`✅ Forge found at: ${url}`);
+          break;
         }
-        this.logger.log('Forge auto-detected successfully!');
       } catch (e) {
-        return {
-          content: '🎨 I detected you want an image, but could not connect to Stable Diffusion. Please check the Forge server.',
-          metadata: {
-            model: 'system',
-            imageGeneration: false,
-            reason: 'SD connection failed',
-            error: e.message
-          }
-        };
+        this.logger.log(`❌ Forge not available at: ${url}`);
       }
+    }
+    
+    if (!workingUrl) {
+      return {
+        content: '🎨 I detected you want an image, but could not connect to Stable Diffusion Forge. Please ensure Forge is running.',
+        metadata: {
+          model: 'system',
+          imageGeneration: false,
+          reason: 'Forge not reachable',
+          triedUrls: forgeUrls
+        }
+      };
     }
 
     try {
-      // Generate optimized SD prompt using Ollama
+      // Generate optimized SD prompt using Ollama (or use simple prompt if Ollama fails)
       this.logger.log('Generating optimized SD prompt...');
-      const promptData = await this.ollamaService.generateImagePrompt(userMessage);
+      let promptData: { prompt: string; negativePrompt: string };
+      
+      try {
+        promptData = await this.ollamaService.generateImagePrompt(userMessage);
+      } catch (promptError) {
+        this.logger.warn(`Ollama prompt generation failed, using simple prompt: ${promptError.message}`);
+        // Extract the main subject from the user message
+        const simplePrompt = userMessage
+          .replace(/generate|create|make|draw|an?|image|picture|photo|of|please/gi, '')
+          .trim() || userMessage;
+        promptData = {
+          prompt: `${simplePrompt}, highly detailed, masterpiece, best quality, 8k uhd, photorealistic`,
+          negativePrompt: 'low quality, blurry, distorted, deformed, ugly, bad anatomy'
+        };
+      }
       
       this.logger.log(`SD Prompt: "${promptData.prompt.substring(0, 100)}..."`);
       this.logger.log(`Negative: "${promptData.negativePrompt.substring(0, 50)}..."`);
 
-      // Generate image with Stable Diffusion
-      this.logger.log('Calling Stable Diffusion...');
+      // Generate image with Stable Diffusion using the working URL
+      this.logger.log(`Calling Stable Diffusion at ${workingUrl}...`);
       const result = await this.stableDiffusionService.generateImage({
         prompt: promptData.prompt,
         negativePrompt: promptData.negativePrompt,
         config: {
-          baseUrl: sdStatus.baseUrl,
-          model: sdStatus.defaultModel,
+          baseUrl: workingUrl,
+          model: 'sd_xl_base_1.0.safetensors',
           enabled: true,
           width: 1024,
           height: 1024,
@@ -402,14 +417,14 @@ export class ChatUseCase {
       });
 
       if (result.success && result.imageUrl) {
-        this.logger.log(`Image generated successfully: ${result.filename}`);
+        this.logger.log(`✅ Image generated successfully: ${result.filename}`);
         
         return {
           content: `🎨 Here's the image I generated for you!\n\n**Prompt used:** ${promptData.prompt.substring(0, 200)}${promptData.prompt.length > 200 ? '...' : ''}`,
           metadata: {
             model: 'stable-diffusion',
             imageGeneration: true,
-            sdModel: sdStatus.defaultModel,
+            sdModel: 'sd_xl_base_1.0.safetensors',
             prompt: promptData.prompt,
             negativePrompt: promptData.negativePrompt,
             processingTime: result.metadata?.processingTime || 0,
