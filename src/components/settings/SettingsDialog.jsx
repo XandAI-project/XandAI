@@ -51,10 +51,10 @@ import { useStableDiffusion } from '../../application/hooks/useStableDiffusion';
 import { StableDiffusionConfig } from '../../domain/entities/StableDiffusionConfig';
 
 /**
- * Dialog de configurações do OLLAMA e Stable Diffusion
- * @param {Object} props - Propriedades do componente
- * @param {boolean} props.open - Se o dialog está aberto
- * @param {Function} props.onClose - Callback para fechar
+ * OLLAMA and Stable Diffusion settings dialog
+ * @param {Object} props - Component properties
+ * @param {boolean} props.open - Whether the dialog is open
+ * @param {Function} props.onClose - Callback to close
  * @returns {JSX.Element}
  */
 const SettingsDialog = ({ open, onClose }) => {
@@ -84,10 +84,10 @@ const SettingsDialog = ({ open, onClose }) => {
     toggleIntegration: toggleSdIntegration
   } = useStableDiffusion();
 
-  // Estados para controle das tabs
+  // States for tab control
   const [currentTab, setCurrentTab] = useState(0);
 
-  // Estados do Ollama
+  // Ollama states
   const [localConfig, setLocalConfig] = useState({
     baseUrl: 'http://localhost:11434',
     timeout: 30000,
@@ -320,7 +320,7 @@ const SettingsDialog = ({ open, onClose }) => {
                 <ErrorIcon color="error" fontSize="small" />
               )}
               <Typography variant="body2">
-                {isConnected ? 'Conectado' : 'Desconectado'}
+                {isConnected ? 'Connected' : 'Disconnected'}
               </Typography>
             </Box>
           </Grid>
@@ -333,7 +333,7 @@ const SettingsDialog = ({ open, onClose }) => {
                 <ErrorIcon color="warning" fontSize="small" />
               )}
               <Typography variant="body2">
-                {isConfigured ? 'Configurado' : 'Não configurado'}
+                {isConfigured ? 'Configured' : 'Not configured'}
               </Typography>
             </Box>
           </Grid>
@@ -343,7 +343,7 @@ const SettingsDialog = ({ open, onClose }) => {
               <Box display="flex" alignItems="center" gap={1}>
                 <MemoryIcon fontSize="small" color="primary" />
                 <Typography variant="body2">
-                  Modelo: {selectedModel}
+                  Model: {selectedModel}
                 </Typography>
                 <Chip 
                   size="small" 
@@ -462,21 +462,21 @@ const SettingsDialog = ({ open, onClose }) => {
               {sdServiceStatus?.success ? (
                 <Chip
                   icon={<CheckIcon />}
-                  label="Conectado"
+                  label="Connected"
                   color="success"
                   variant="outlined"
                 />
               ) : sdServiceStatus?.requiresAuth || sdServiceStatus?.error === 'AUTHENTICATION_REQUIRED' || sdServiceStatus?.error === 'TOKEN_EXPIRED' ? (
                 <Chip
                   icon={<WarningIcon />}
-                  label="Login Necessário"
+                  label="Login Required"
                   color="warning"
                   variant="outlined"
                 />
               ) : (
                 <Chip
                   icon={<ErrorIcon />}
-                  label="Desconectado"
+                  label="Disconnected"
                   color="error"
                   variant="outlined"
                 />
@@ -618,7 +618,7 @@ const SettingsDialog = ({ open, onClose }) => {
           <Box display="flex" alignItems="center" gap={1}>
             <SettingsIcon />
             <Typography variant="h6">
-              Configurações de IA
+              AI Settings
             </Typography>
           </Box>
           <IconButton onClick={onClose}>
@@ -628,7 +628,7 @@ const SettingsDialog = ({ open, onClose }) => {
       </DialogTitle>
 
       <DialogContent dividers>
-        {/* Tabs para diferentes configurações */}
+        {/* Tabs for different settings */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
           <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)}>
             <Tab 
@@ -970,7 +970,7 @@ const SettingsDialog = ({ open, onClose }) => {
 
       <DialogActions sx={{ p: 2 }}>
         <Button onClick={onClose}>
-          Fechar
+          Close
         </Button>
       </DialogActions>
     </Dialog>

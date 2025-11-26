@@ -38,14 +38,13 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Componente de formulário de registro
- * @param {Object} props - Props do componente
- * @param {Function} props.onSwitchToLogin - Callback para alternar para login
- * @param {Function} props.onRegisterSuccess - Callback para registro bem-sucedido
+ * Register form component
+ * @param {Object} props - Component props
+ * @param {Function} props.onSwitchToLogin - Callback to switch to login
+ * @param {Function} props.onRegisterSuccess - Callback for successful registration
  */
 const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const { register, isLoading } = useAuth();
 
   const [formData, setFormData] = useState({
@@ -55,15 +54,15 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
     firstName: '',
     lastName: '',
     theme: 'dark',
-    preferredLanguage: 'pt'
+    preferredLanguage: 'en'
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
 
   /**
-   * Manipula mudanças nos campos do formulário
-   * @param {Event} event - Evento de mudança
+   * Handles form field changes
+   * @param {Event} event - Change event
    */
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -72,21 +71,21 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
       [name]: value
     }));
     
-    // Limpa erro ao digitar
+    // Clear error when typing
     if (error) {
       setError('');
     }
   };
 
   /**
-   * Manipula envio do formulário
-   * @param {Event} event - Evento de envio
+   * Handles form submission
+   * @param {Event} event - Submit event
    */
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
-    // Validação
+    // Validation
     const validationError = validateForm();
     if (validationError) {
       setError(validationError);
@@ -94,76 +93,60 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
     }
 
     try {
-      const { confirmPassword, ...registerData } = formData;
-      await register(registerData);
+      const userData = await register(formData);
       if (onRegisterSuccess) {
-        onRegisterSuccess();
+        onRegisterSuccess(userData);
       }
     } catch (error) {
-      console.error('Erro no registro:', error);
-      setError(error.message || 'Erro ao criar conta. Tente novamente.');
+      console.error('Registration error:', error);
+      setError(error.message || 'Error creating account. Please try again.');
     }
   };
 
   /**
-   * Valida o formulário
-   * @returns {string|null} - Mensagem de erro ou null se válido
+   * Validates the form data
+   * @returns {string|null} - Error message or null if valid
    */
   const validateForm = () => {
-    const { email, password, confirmPassword, firstName, lastName } = formData;
-
-    if (!email || !password || !confirmPassword || !firstName || !lastName) {
-      return 'Por favor, preencha todos os campos obrigatórios';
+    if (!formData.email || !formData.password || !formData.firstName) {
+      return 'Please fill in all required fields';
     }
 
-    if (!isValidEmail(email)) {
-      return 'Por favor, insira um email válido';
+    if (!isValidEmail(formData.email)) {
+      return 'Please enter a valid email';
     }
 
-    if (password.length < 8) {
-      return 'A senha deve ter pelo menos 8 caracteres';
+    if (formData.password.length < 8) {
+      return 'Password must be at least 8 characters long';
     }
 
-    if (password !== confirmPassword) {
-      return 'As senhas não coincidem';
-    }
-
-    if (firstName.length < 2) {
-      return 'O primeiro nome deve ter pelo menos 2 caracteres';
-    }
-
-    if (lastName.length < 2) {
-      return 'O sobrenome deve ter pelo menos 2 caracteres';
+    if (formData.password !== formData.confirmPassword) {
+      return 'Passwords do not match';
     }
 
     return null;
   };
 
-  /**
-   * Valida formato do email
-   * @param {string} email - Email a ser validado
-   * @returns {boolean} - Se o email é válido
-   */
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return emailRegex.test(email);
   };
 
   /**
-   * Alterna visibilidade da senha
+   * Toggles password visibility
    */
   const togglePasswordVisibility = () => {
     setShowPassword(prev => !prev);
   };
 
   /**
-   * Alterna visibilidade da confirmação de senha
+   * Toggles confirmation password visibility
    */
   const toggleConfirmPasswordVisibility = () => {
     setShowConfirmPassword(prev => !prev);
   };
 
-  // Estilo simples e uniforme
+  // Simple and uniform style
   const inputSx = {
     mb: 2,
     '& .MuiOutlinedInput-root': {
@@ -177,7 +160,7 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
       <Card
         elevation={0}
         sx={{
-          maxWidth: { xs: '100%', sm: 520, md: 580 },
+          maxWidth: { xs: '100%', sm: 520, md: 600 },
           width: '100%',
           background: `linear-gradient(145deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`,
           borderRadius: { xs: 2, sm: 3 },
@@ -195,17 +178,17 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
             left: 0,
             right: 0,
             height: '4px',
-            background: `linear-gradient(90deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`,
+            background: `linear-gradient(90deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
           }
         }}
       >
         <CardContent
           sx={{
-            p: { xs: 2.5, sm: 4, md: 5 },
-            '&:last-child': { pb: { xs: 2.5, sm: 4, md: 5 } }
+            p: { xs: 3, sm: 4, md: 5 },
+            '&:last-child': { pb: { xs: 3, sm: 4, md: 5 } }
           }}
         >
-          {/* Cabeçalho */}
+          {/* Header */}
           <Slide direction="down" in timeout={800}>
             <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 4 } }}>
               <Box
@@ -220,8 +203,8 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                   sx={{
                     p: 2,
                     borderRadius: '50%',
-                    background: `linear-gradient(145deg, ${theme.palette.secondary.main}20, ${theme.palette.primary.main}20)`,
-                    border: `2px solid ${theme.palette.secondary.main}30`,
+                    background: `linear-gradient(145deg, ${theme.palette.primary.main}20, ${theme.palette.secondary.main}20)`,
+                    border: `2px solid ${theme.palette.primary.main}30`,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -230,7 +213,7 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                   <PersonAddIcon 
                     sx={{ 
                       fontSize: { xs: 32, sm: 40 },
-                      color: theme.palette.secondary.main,
+                      color: theme.palette.primary.main,
                     }} 
                   />
                 </Box>
@@ -243,14 +226,14 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                 sx={{
                   fontWeight: 700,
                   fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
-                  background: `linear-gradient(45deg, ${theme.palette.text.primary}, ${theme.palette.secondary.main})`,
+                  background: `linear-gradient(45deg, ${theme.palette.text.primary}, ${theme.palette.primary.main})`,
                   backgroundClip: 'text',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   mb: 1
                 }}
               >
-                Junte-se ao XandAI
+                Welcome to XandAI
               </Typography>
               
               <Typography 
@@ -258,15 +241,17 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                 color="text.secondary"
                 sx={{
                   fontSize: { xs: '0.9rem', sm: '1rem' },
-                  opacity: 0.8
+                  opacity: 0.8,
+                  maxWidth: 400,
+                  mx: 'auto'
                 }}
               >
-                Crie sua conta e comece a conversar com IA
+                Create your account and start chatting with AI
               </Typography>
             </Box>
           </Slide>
 
-          {/* Formulário - Container com largura fixa */}
+          {/* Form - Container with fixed width */}
           <Slide direction="up" in timeout={1000}>
             <Box 
               component="form" 
@@ -277,21 +262,25 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                 mx: 'auto'
               }}
             >
-              {/* Alert de erro */}
+              {/* Error alert */}
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {error}
                 </Alert>
               )}
 
-              {/* Todos os campos com mesma largura */}
+              {/* Form fields */}
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 
-                {/* Nome */}
+                {/* Personal Information */}
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+                  Personal Information
+                </Typography>
+                
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <TextField
                     name="firstName"
-                    label="Primeiro Nome"
+                    label="First Name"
                     required
                     value={formData.firstName}
                     onChange={handleChange}
@@ -305,21 +294,14 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                       ),
                     }}
                   />
+                  
                   <TextField
                     name="lastName"
-                    label="Sobrenome"
-                    required
+                    label="Last Name"
                     value={formData.lastName}
                     onChange={handleChange}
                     disabled={isLoading}
                     sx={{ ...inputSx, width: '50%' }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <PersonIcon sx={{ color: theme.palette.text.secondary }} />
-                        </InputAdornment>
-                      ),
-                    }}
                   />
                 </Box>
 
@@ -332,7 +314,7 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                   value={formData.email}
                   onChange={handleChange}
                   disabled={isLoading}
-                  sx={{ ...inputSx, width: '100%' }}
+                  sx={inputSx}
                   InputProps={{
                     startAdornment: (
                       <InputAdornment position="start">
@@ -342,17 +324,20 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                   }}
                 />
 
-                {/* Senhas */}
+                {/* Passwords */}
+                <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 1 }}>
+                  Security
+                </Typography>
+                
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <TextField
                     name="password"
                     type={showPassword ? 'text' : 'password'}
-                    label="Senha"
+                    label="Password"
                     required
                     value={formData.password}
                     onChange={handleChange}
                     disabled={isLoading}
-                    helperText="Mínimo de 8 caracteres"
                     sx={{ ...inputSx, width: '50%' }}
                     InputProps={{
                       startAdornment: (
@@ -369,21 +354,17 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                       ),
                     }}
                   />
+                  
                   <TextField
                     name="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
-                    label="Confirmar Senha"
+                    label="Confirm Password"
                     required
                     value={formData.confirmPassword}
                     onChange={handleChange}
                     disabled={isLoading}
                     sx={{ ...inputSx, width: '50%' }}
                     InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <LockIcon sx={{ color: theme.palette.text.secondary }} />
-                        </InputAdornment>
-                      ),
                       endAdornment: (
                         <InputAdornment position="end">
                           <IconButton onClick={toggleConfirmPasswordVisibility} size="small">
@@ -395,34 +376,34 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                   />
                 </Box>
 
-                {/* Preferências */}
+                {/* Preferences */}
                 <Typography variant="subtitle2" sx={{ fontWeight: 600, mt: 1 }}>
-                  Preferências
+                  Preferences
                 </Typography>
                 
                 <Box sx={{ display: 'flex', gap: 1 }}>
                   <FormControl sx={{ width: '50%' }}>
-                    <InputLabel>Tema</InputLabel>
+                    <InputLabel>Theme</InputLabel>
                     <Select
                       name="theme"
                       value={formData.theme}
                       onChange={handleChange}
-                      label="Tema"
+                      label="Theme"
                       disabled={isLoading}
                       sx={{ height: '56px' }}
                     >
-                      <MenuItem value="light">☀️ Claro</MenuItem>
-                      <MenuItem value="dark">🌙 Escuro</MenuItem>
+                      <MenuItem value="light">☀️ Light</MenuItem>
+                      <MenuItem value="dark">🌙 Dark</MenuItem>
                     </Select>
                   </FormControl>
                   
                   <FormControl sx={{ width: '50%' }}>
-                    <InputLabel>Idioma</InputLabel>
+                    <InputLabel>Language</InputLabel>
                     <Select
                       name="preferredLanguage"
                       value={formData.preferredLanguage}
                       onChange={handleChange}
-                      label="Idioma"
+                      label="Language"
                       disabled={isLoading}
                       sx={{ height: '56px' }}
                     >
@@ -435,7 +416,7 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
 
               </Box>
 
-              {/* Botão de registro */}
+              {/* Register button */}
               <Button
                 type="submit"
                 fullWidth
@@ -450,12 +431,12 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                   fontSize: { xs: '1rem', sm: '1.1rem' },
                   fontWeight: 600,
                   borderRadius: 2,
-                  background: `linear-gradient(45deg, ${theme.palette.secondary.main}, ${theme.palette.primary.main})`,
-                  boxShadow: `0 8px 25px ${theme.palette.secondary.main}40`,
+                  background: `linear-gradient(45deg, ${theme.palette.primary.main}, ${theme.palette.secondary.main})`,
+                  boxShadow: `0 8px 25px ${theme.palette.primary.main}40`,
                   transition: 'all 0.3s ease',
                   '&:hover': {
-                    background: `linear-gradient(45deg, ${theme.palette.secondary.dark}, ${theme.palette.primary.dark})`,
-                    boxShadow: `0 12px 35px ${theme.palette.secondary.main}60`,
+                    background: `linear-gradient(45deg, ${theme.palette.primary.dark}, ${theme.palette.secondary.dark})`,
+                    boxShadow: `0 12px 35px ${theme.palette.primary.main}60`,
                     transform: 'translateY(-2px)',
                   },
                   '&:active': {
@@ -471,20 +452,20 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                 {isLoading ? (
                   <CircularProgress size={24} color="inherit" />
                 ) : (
-                  'Criar Conta'
+                  'Create Account'
                 )}
               </Button>
 
               <Divider sx={{ my: 2 }}>
                 <Typography variant="caption" color="text.secondary">
-                  ou
+                  or
                 </Typography>
               </Divider>
 
-              {/* Link para login */}
+              {/* Login link */}
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
-                  Já tem uma conta?
+                  Already have an account?
                 </Typography>
                 <Button
                   variant="text"
@@ -494,15 +475,15 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
                     mt: 1,
                     fontWeight: 600,
                     fontSize: { xs: '0.9rem', sm: '1rem' },
-                    color: theme.palette.secondary.main,
+                    color: theme.palette.primary.main,
                     '&:hover': {
-                      backgroundColor: `${theme.palette.secondary.main}10`,
+                      backgroundColor: `${theme.palette.primary.main}10`,
                       transform: 'scale(1.02)',
                     },
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  Fazer login
+                  Sign in
                 </Button>
               </Box>
             </Box>

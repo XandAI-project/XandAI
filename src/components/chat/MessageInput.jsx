@@ -18,19 +18,19 @@ import {
 } from '@mui/icons-material';
 
 /**
- * Componente de entrada de mensagem
- * @param {Object} props - Propriedades do componente
- * @param {Function} props.onSendMessage - Callback para enviar mensagem
- * @param {boolean} props.disabled - Se o input está desabilitado
- * @param {boolean} props.isLoading - Se está carregando
- * @param {string} props.placeholder - Placeholder do input
+ * Message input component
+ * @param {Object} props - Component properties
+ * @param {Function} props.onSendMessage - Callback to send message
+ * @param {boolean} props.disabled - Whether the input is disabled
+ * @param {boolean} props.isLoading - Whether it's loading
+ * @param {string} props.placeholder - Input placeholder
  * @returns {JSX.Element}
  */
 const MessageInput = ({ 
   onSendMessage, 
   disabled = false, 
   isLoading = false,
-  placeholder = "Digite sua mensagem..."
+  placeholder = "Type your message..."
 }) => {
   const [message, setMessage] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -39,7 +39,7 @@ const MessageInput = ({
   const inputRef = useRef(null);
 
   /**
-   * Manipula o envio da mensagem
+   * Handles message sending
    */
   const handleSendMessage = () => {
     const trimmedMessage = message.trim();
@@ -47,7 +47,7 @@ const MessageInput = ({
       onSendMessage(trimmedMessage);
       setMessage('');
       
-      // Foca no input após enviar
+      // Focus on input after sending
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -57,8 +57,8 @@ const MessageInput = ({
   };
 
   /**
-   * Manipula a tecla Enter
-   * @param {KeyboardEvent} event - Evento do teclado
+   * Handles Enter key
+   * @param {KeyboardEvent} event - Keyboard event
    */
   const handleKeyPress = (event) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -68,19 +68,19 @@ const MessageInput = ({
   };
 
   /**
-   * Manipula mudanças no input
-   * @param {Event} event - Evento de mudança
+   * Handles input changes
+   * @param {Event} event - Change event
    */
   const handleInputChange = (event) => {
     setMessage(event.target.value);
   };
 
   /**
-   * Verifica se pode enviar a mensagem
+   * Checks if message can be sent
    */
   const canSend = message.trim().length > 0 && !disabled && !isLoading;
 
-  // Estilo do container principal
+  // Main container style
   const containerStyle = {
     p: isMobile ? 1 : 2,
     borderTop: `1px solid ${theme.palette.divider}`,
@@ -90,7 +90,7 @@ const MessageInput = ({
     zIndex: 10,
   };
 
-  // Estilo do paper que contém o input
+  // Paper style that contains the input
   const inputPaperStyle = {
     display: 'flex',
     alignItems: 'flex-end',
@@ -105,10 +105,10 @@ const MessageInput = ({
   return (
     <Box sx={containerStyle}>
       <Paper sx={inputPaperStyle} elevation={0}>
-        {/* Botões de ação à esquerda (apenas em desktop) */}
+        {/* Left action buttons (desktop only) */}
         {!isMobile && (
           <Box sx={{ display: 'flex', gap: 0.5 }}>
-            <Tooltip title="Anexar arquivo">
+            <Tooltip title="Attach file">
               <IconButton 
                 size="small" 
                 disabled={disabled}
@@ -118,7 +118,7 @@ const MessageInput = ({
               </IconButton>
             </Tooltip>
             
-            <Tooltip title="Adicionar emoji">
+            <Tooltip title="Add emoji">
               <IconButton 
                 size="small" 
                 disabled={disabled}
@@ -130,7 +130,7 @@ const MessageInput = ({
           </Box>
         )}
 
-        {/* Campo de entrada de texto */}
+        {/* Text input field */}
         <TextField
           ref={inputRef}
           fullWidth
@@ -166,10 +166,10 @@ const MessageInput = ({
           }}
         />
 
-        {/* Botões de ação à direita */}
+        {/* Right action buttons */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          {/* Botão de microfone */}
-          <Tooltip title="Mensagem de voz">
+          {/* Microphone button */}
+          <Tooltip title="Voice message">
             <IconButton 
               size="small" 
               disabled={disabled}
@@ -179,8 +179,8 @@ const MessageInput = ({
             </IconButton>
           </Tooltip>
 
-          {/* Botão de envio */}
-          <Tooltip title={canSend ? "Enviar mensagem" : "Digite uma mensagem"}>
+          {/* Send button */}
+          <Tooltip title={canSend ? "Send message" : "Type a message"}>
             <span>
               <IconButton
                 onClick={handleSendMessage}
@@ -210,7 +210,7 @@ const MessageInput = ({
         </Box>
       </Paper>
 
-      {/* Dica de uso em mobile */}
+      {/* Mobile usage tip */}
       {isMobile && (
         <Box sx={{ 
           display: 'flex', 
@@ -222,7 +222,7 @@ const MessageInput = ({
             color="text.secondary"
             sx={{ fontSize: '0.75rem' }}
           >
-            Pressione Enter para enviar
+            Press Enter to send
           </Typography>
         </Box>
       )}

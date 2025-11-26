@@ -24,9 +24,9 @@ import {
 import { useOllama } from '../../application/hooks/useOllama';
 
 /**
- * Componente seletor de modelo
- * @param {Object} props - Propriedades do componente
- * @param {Function} props.onOpenSettings - Callback para abrir configurações
+ * Model selector component
+ * @param {Object} props - Component properties
+ * @param {Function} props.onOpenSettings - Callback to open settings
  * @returns {JSX.Element}
  */
 const ModelSelector = ({ onOpenSettings }) => {
@@ -73,7 +73,7 @@ const ModelSelector = ({ onOpenSettings }) => {
       }
       handleClose();
     } catch (error) {
-      console.error('Erro ao selecionar modelo:', error);
+      console.error('Error selecting model:', error);
     }
   };
 
@@ -86,7 +86,7 @@ const ModelSelector = ({ onOpenSettings }) => {
   };
 
   /**
-   * Obtém o status do modelo atual
+   * Gets current model status
    */
   const getModelStatus = () => {
     if (!config?.enabled) {
@@ -103,7 +103,7 @@ const ModelSelector = ({ onOpenSettings }) => {
         label: 'Mock AI (Fallback)',
         icon: <WarningIcon fontSize="small" />,
         color: 'warning',
-        description: 'OLLAMA desconectado - usando fallback'
+        description: 'OLLAMA disconnected - using fallback'
       };
     }
 
@@ -207,12 +207,12 @@ const ModelSelector = ({ onOpenSettings }) => {
         {/* Cabeçalho do menu */}
         <Box sx={{ p: 2, pb: 1 }}>
           <Typography variant="subtitle2" fontWeight={600}>
-            Selecionar Modelo
+            Select Model
           </Typography>
           <Typography variant="caption" color="text.secondary">
             {serviceStatus?.isConnected 
-              ? `${models.length} modelos disponíveis` 
-              : 'OLLAMA desconectado'
+              ? `${models.length} models available` 
+              : 'OLLAMA disconnected'
             }
           </Typography>
         </Box>
@@ -229,7 +229,7 @@ const ModelSelector = ({ onOpenSettings }) => {
           </ListItemIcon>
           <ListItemText
             primary="Mock AI"
-            secondary="Respostas simuladas para desenvolvimento"
+            secondary="Simulated responses for development"
             secondaryTypographyProps={{ fontSize: '0.75rem' }}
           />
           {(!config?.enabled || !config?.selectedModel) && (
@@ -298,8 +298,8 @@ const ModelSelector = ({ onOpenSettings }) => {
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText
-            primary="Configurações OLLAMA"
-            secondary="Gerenciar conexão e modelos"
+            primary="OLLAMA Settings"
+            secondary="Manage connection and models"
             secondaryTypographyProps={{ fontSize: '0.75rem' }}
           />
         </MenuItem>

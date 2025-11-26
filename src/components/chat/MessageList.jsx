@@ -17,11 +17,11 @@ import {
 import ChatMessage from './ChatMessage';
 
 /**
- * Componente para exibir a lista de mensagens do chat
- * @param {Object} props - Propriedades do componente
- * @param {Message[]} props.messages - Array de mensagens
- * @param {boolean} props.isLoading - Se está carregando
- * @param {boolean} props.isTyping - Se está digitando
+ * Component to display the chat message list
+ * @param {Object} props - Component properties
+ * @param {Message[]} props.messages - Messages array
+ * @param {boolean} props.isLoading - Whether it's loading
+ * @param {boolean} props.isTyping - Whether it's typing
  * @returns {JSX.Element}
  */
 const MessageList = ({ messages = [], isLoading = false, isTyping = false, onImageGenerated }) => {
@@ -31,7 +31,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
   const containerRef = useRef(null);
 
   /**
-   * Scroll automático para a última mensagem
+   * Auto scroll to the last message
    */
   const scrollToBottom = () => {
     if (messagesEndRef.current) {
@@ -42,14 +42,14 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
     }
   };
 
-  // Efeito para scroll automático quando novas mensagens chegam
+  // Effect for auto scroll when new messages arrive
   useEffect(() => {
     scrollToBottom();
   }, [messages, isTyping]);
 
   /**
-   * Verifica se deve mostrar o avatar baseado na mensagem anterior
-   * @param {number} index - Índice da mensagem atual
+   * Checks whether to show avatar based on the previous message
+   * @param {number} index - Current message index
    * @returns {boolean}
    */
   const shouldShowAvatar = (index) => {
@@ -62,8 +62,8 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
   };
 
   /**
-   * Verifica se deve mostrar o divisor de data
-   * @param {number} index - Índice da mensagem atual
+   * Checks whether to show date divider
+   * @param {number} index - Current message index
    * @returns {boolean}
    */
   const shouldShowDateDivider = (index) => {
@@ -79,8 +79,8 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
   };
 
   /**
-   * Formata a data para o divisor
-   * @param {Date} date - Data a ser formatada
+   * Formats the date for the divider
+   * @param {Date} date - Date to be formatted
    * @returns {string}
    */
   const formatDateDivider = (date) => {
@@ -88,17 +88,17 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
     const yesterday = new Date(Date.now() - 86400000).toDateString();
     const messageDate = new Date(date).toDateString();
     
-    if (messageDate === today) return 'Hoje';
-    if (messageDate === yesterday) return 'Ontem';
+    if (messageDate === today) return 'Today';
+    if (messageDate === yesterday) return 'Yesterday';
     
-    return new Date(date).toLocaleDateString('pt-BR', {
+    return new Date(date).toLocaleDateString('en-US', {
       day: 'numeric',
       month: 'long',
       year: 'numeric'
     });
   };
 
-  // Componente de boas-vindas quando não há mensagens
+  // Welcome component when there are no messages
   const WelcomeMessage = () => (
     <Fade in={true} timeout={800}>
       <Box sx={{
@@ -111,7 +111,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
         p: 4,
         gap: 3
       }}>
-        {/* Logo/Ícone principal */}
+        {/* Main logo/icon */}
         <Paper
           sx={{
             p: 3,
@@ -124,7 +124,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
           <ChatIcon sx={{ fontSize: 48 }} />
         </Paper>
 
-        {/* Título de boas-vindas */}
+        {/* Welcome title */}
         <Box>
           <Typography 
             variant={isMobile ? "h5" : "h4"} 
@@ -136,7 +136,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
               mb: 1
             }}
           >
-            Olá! Eu sou o XandAI 👋
+            Hello! I'm XandAI 👋
           </Typography>
           
           <Typography 
@@ -144,12 +144,12 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
             color="text.secondary"
             sx={{ mb: 3, maxWidth: 400 }}
           >
-            Seu assistente virtual inteligente. Estou aqui para te ajudar com suas dúvidas, 
-            conversas e muito mais!
+            Your intelligent virtual assistant. I'm here to help you with your questions, 
+            conversations and much more!
           </Typography>
         </Box>
 
-        {/* Dicas de uso */}
+        {/* Usage tips */}
         <Paper 
           sx={{ 
             p: 2, 
@@ -162,22 +162,22 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
             <TipIcon color="primary" fontSize="small" />
             <Typography variant="body2" fontWeight={500}>
-              Dicas para começar:
+              Tips to get started:
             </Typography>
           </Box>
           
           <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.875rem' }}>
-            • Faça qualquer pergunta que eu tentarei ajudar<br/>
-            • Converse sobre seus interesses<br/>
-            • Peça ajuda com programação ou tecnologia<br/>
-            • Use linguagem natural, seja você mesmo!
+            • Ask any question and I'll try to help<br/>
+            • Talk about your interests<br/>
+            • Ask for help with programming or technology<br/>
+            • Use natural language, be yourself!
           </Typography>
         </Paper>
       </Box>
     </Fade>
   );
 
-  // Componente de divisor de data
+  // Date divider component
   const DateDivider = ({ date }) => (
     <Box sx={{ 
       display: 'flex', 
@@ -205,7 +205,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
     </Box>
   );
 
-  // Estilo do container principal
+  // Main container style
   const containerStyle = {
     height: '100%',
     overflow: 'hidden',
@@ -214,7 +214,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
     backgroundColor: theme.palette.background.chat || theme.palette.background.default,
   };
 
-  // Estilo da lista de mensagens
+  // Message list style
   const listStyle = {
     flex: 1,
     overflow: 'auto',
@@ -242,12 +242,12 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
         <List sx={listStyle}>
           {messages.map((message, index) => (
             <React.Fragment key={message.id}>
-              {/* Divisor de data */}
+              {/* Date divider */}
               {shouldShowDateDivider(index) && (
                 <DateDivider date={message.timestamp} />
               )}
               
-              {/* Mensagem */}
+              {/* Message */}
               <ListItem sx={{ p: 0, display: 'block' }}>
                 <ChatMessage 
                   message={message} 
@@ -258,7 +258,7 @@ const MessageList = ({ messages = [], isLoading = false, isTyping = false, onIma
             </React.Fragment>
           ))}
           
-          {/* Elemento para scroll automático */}
+          {/* Element for auto scroll */}
           <div ref={messagesEndRef} />
         </List>
       )}

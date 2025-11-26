@@ -22,7 +22,7 @@ import { useChat } from '../../application/hooks/useChat';
 import { useChatHistory } from '../../application/hooks/useChatHistory';
 
 /**
- * Container principal do chat
+ * Main chat container
  * @returns {JSX.Element}
  */
 const ChatContainer = () => {
@@ -45,7 +45,7 @@ const ChatContainer = () => {
     updateMessageAttachment
   } = useChat();
 
-  // Hook para gerenciar histórico de conversas
+  // Hook to manage conversation history
   const {
     chatSessions,
     currentSession,
@@ -120,7 +120,7 @@ const ChatContainer = () => {
   };
 
   /**
-   * Manipula a atualização do chat
+   * Handles chat updates
    */
   const handleRefresh = () => {
     window.location.reload();
@@ -345,8 +345,8 @@ const ChatContainer = () => {
             isLoading={isLoading}
             placeholder={
               hasMessages 
-                ? "Digite sua mensagem..." 
-                : "Olá! Como posso te ajudar hoje?"
+                ? "Type your message..." 
+                : "Hello! How can I help you today?"
             }
           />
         </Paper>
@@ -360,16 +360,16 @@ const ChatContainer = () => {
         fullWidth
       >
         <DialogTitle>
-          Limpar Conversa
+          Clear Conversation
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Tem certeza de que deseja limpar toda a conversa? 
-            Esta ação não pode ser desfeita.
+            Are you sure you want to clear the entire conversation? 
+            This action cannot be undone.
           </Typography>
           {messageCount > 0 && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {messageCount} mensagens serão removidas permanentemente.
+              {messageCount} messages will be permanently removed.
             </Typography>
           )}
         </DialogContent>
@@ -378,14 +378,14 @@ const ChatContainer = () => {
             onClick={handleClearDialogClose}
             color="inherit"
           >
-            Cancelar
+            Cancel
           </Button>
           <Button 
             onClick={handleClearHistory}
             color="error"
             variant="contained"
           >
-            Limpar
+            Clear
           </Button>
         </DialogActions>
       </Dialog>

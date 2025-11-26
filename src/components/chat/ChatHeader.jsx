@@ -32,14 +32,14 @@ import ModelSelector from './ModelSelector';
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Componente do cabeçalho do chat
- * @param {Object} props - Propriedades do componente
- * @param {Function} props.onMenuClick - Callback para abrir menu
- * @param {Function} props.onClearChat - Callback para limpar chat
- * @param {Function} props.onRefresh - Callback para atualizar
- * @param {Function} props.onSettings - Callback para abrir configurações
- * @param {number} props.messageCount - Número de mensagens
- * @param {boolean} props.isTyping - Se está digitando
+ * Chat header component
+ * @param {Object} props - Component properties
+ * @param {Function} props.onMenuClick - Callback to open menu
+ * @param {Function} props.onClearChat - Callback to clear chat
+ * @param {Function} props.onRefresh - Callback to refresh
+ * @param {Function} props.onSettings - Callback to open settings
+ * @param {number} props.messageCount - Number of messages
+ * @param {boolean} props.isTyping - Whether it's typing
  * @returns {JSX.Element}
  */
 const ChatHeader = ({ 
@@ -55,26 +55,26 @@ const ChatHeader = ({
   const { user, logout, getFullName, getInitials } = useAuth();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
-  // Status do bot
-  const botStatus = isTyping ? 'digitando...' : 'online';
+  // Bot status
+  const botStatus = isTyping ? 'typing...' : 'online';
   const statusColor = isTyping ? 'warning' : 'success';
 
   /**
-   * Abre o menu do usuário
+   * Opens the user menu
    */
   const handleUserMenuOpen = (event) => {
     setUserMenuAnchor(event.currentTarget);
   };
 
   /**
-   * Fecha o menu do usuário
+   * Closes the user menu
    */
   const handleUserMenuClose = () => {
     setUserMenuAnchor(null);
   };
 
   /**
-   * Manipula logout do usuário
+   * Handles user logout
    */
   const handleLogout = () => {
     handleUserMenuClose();
@@ -82,12 +82,12 @@ const ChatHeader = ({
   };
 
   /**
-   * Manipula abertura de perfil
+   * Handles profile opening
    */
   const handleProfile = () => {
     handleUserMenuClose();
-    // TODO: Implementar página de perfil
-    console.log('Abrir perfil');
+    // TODO: Implement profile page
+    console.log('Open profile');
   };
 
   return (
@@ -102,7 +102,7 @@ const ChatHeader = ({
       }}
     >
       <Toolbar sx={{ px: { xs: 1, sm: 2 } }}>
-        {/* Botão de menu */}
+        {/* Menu button */}
         <IconButton
           edge="start"
           color="inherit"
@@ -113,20 +113,22 @@ const ChatHeader = ({
           <MenuIcon />
         </IconButton>
 
-        {/* Avatar e informações do bot */}
+        {/* Avatar and bot information */}
         <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, gap: 2 }}>
-          {/* Avatar do XandAI */}
+          {/* XandAI Logo */}
           <Avatar
             sx={{
-              backgroundColor: theme.palette.primary.main,
+              backgroundColor: 'transparent',
               width: isMobile ? 36 : 40,
               height: isMobile ? 36 : 40,
             }}
+            src="/logo.png"
+            alt="XandAI"
           >
             <BotIcon />
           </Avatar>
 
-          {/* Informações */}
+          {/* Information */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography 
               variant="h6" 
@@ -141,7 +143,7 @@ const ChatHeader = ({
             </Typography>
             
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              {/* Status online */}
+              {/* Online status */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <OnlineIcon 
                   sx={{ 
@@ -158,10 +160,10 @@ const ChatHeader = ({
                 </Typography>
               </Box>
 
-              {/* Contador de mensagens (apenas em desktop) */}
+              {/* Message counter (desktop only) */}
               {!isMobile && messageCount > 0 && (
                 <Chip
-                  label={`${messageCount} mensagens`}
+                  label={`${messageCount} messages`}
                   size="small"
                   variant="outlined"
                   sx={{
@@ -176,17 +178,17 @@ const ChatHeader = ({
           </Box>
         </Box>
 
-        {/* Seletor de modelo */}
+        {/* Model selector */}
         {!isMobile && (
           <Box sx={{ mr: 2 }}>
             <ModelSelector onOpenSettings={onSettings} />
           </Box>
         )}
 
-        {/* Ações do header */}
+        {/* Header actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-          {/* Botão de configurações */}
-          <Tooltip title="Configurações">
+          {/* Settings button */}
+          <Tooltip title="Settings">
             <IconButton
               color="inherit"
               onClick={onSettings}
@@ -196,8 +198,8 @@ const ChatHeader = ({
             </IconButton>
           </Tooltip>
 
-          {/* Botão de atualizar */}
-          <Tooltip title="Atualizar chat">
+          {/* Refresh button */}
+          <Tooltip title="Refresh chat">
             <IconButton
               color="inherit"
               onClick={onRefresh}
@@ -207,9 +209,9 @@ const ChatHeader = ({
             </IconButton>
           </Tooltip>
 
-          {/* Botão de limpar chat */}
+          {/* Clear chat button */}
           {messageCount > 0 && (
-            <Tooltip title="Limpar conversa">
+            <Tooltip title="Clear conversation">
               <IconButton
                 color="inherit"
                 onClick={onClearChat}
@@ -220,8 +222,8 @@ const ChatHeader = ({
             </Tooltip>
           )}
 
-          {/* Avatar do usuário */}
-          <Tooltip title={`${getFullName()} - Clique para opções`}>
+          {/* User avatar */}
+          <Tooltip title={`${getFullName()} - Click for options`}>
             <IconButton
               color="inherit"
               onClick={handleUserMenuOpen}
@@ -244,7 +246,7 @@ const ChatHeader = ({
         </Box>
       </Toolbar>
 
-      {/* Barra de progresso para digitação */}
+      {/* Progress bar for typing */}
       {isTyping && (
         <Box
           sx={{
@@ -255,7 +257,7 @@ const ChatHeader = ({
         />
       )}
 
-      {/* Menu do usuário */}
+      {/* User menu */}
       <Menu
         anchorEl={userMenuAnchor}
         open={Boolean(userMenuAnchor)}
@@ -271,7 +273,7 @@ const ChatHeader = ({
         transformOrigin={{ horizontal: 'right', vertical: 'top' }}
         anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
       >
-        {/* Informações do usuário */}
+        {/* User information */}
         <Box sx={{ p: 2, pb: 1 }}>
           <Typography variant="subtitle2" fontWeight={600}>
             {getFullName()}
@@ -283,13 +285,13 @@ const ChatHeader = ({
 
         <Divider />
 
-        {/* Opções do menu */}
+        {/* Menu options */}
         <MenuItem onClick={handleProfile}>
           <ListItemIcon>
             <PersonIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>
-            Meu Perfil
+            My Profile
           </ListItemText>
         </MenuItem>
 
@@ -298,7 +300,7 @@ const ChatHeader = ({
             <SettingsIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>
-            Configurações
+            Settings
           </ListItemText>
         </MenuItem>
 
@@ -309,7 +311,7 @@ const ChatHeader = ({
             <LogoutIcon fontSize="small" />
           </ListItemIcon>
           <ListItemText>
-            Sair
+            Logout
           </ListItemText>
         </MenuItem>
       </Menu>

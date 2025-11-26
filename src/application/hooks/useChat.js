@@ -119,8 +119,8 @@ export const useChat = () => {
   }, [chatService]);
 
   /**
-   * Envia uma nova mensagem
-   * @param {string} messageContent - Conteúdo da mensagem
+   * Sends a new message
+   * @param {string} messageContent - Message content
    */
   const sendMessage = useCallback(async (messageContent) => {
     if (!messageContent.trim() || !chatService) return;

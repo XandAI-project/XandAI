@@ -15,9 +15,9 @@ import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 
 /**
- * Página de autenticação que alterna entre login e registro
- * @param {Object} props - Props do componente
- * @param {Function} props.onAuthSuccess - Callback para autenticação bem-sucedida
+ * Authentication page that switches between login and register
+ * @param {Object} props - Component props
+ * @param {Function} props.onAuthSuccess - Callback for successful authentication
  */
 const AuthPage = ({ onAuthSuccess }) => {
   const theme = useTheme();
@@ -25,14 +25,14 @@ const AuthPage = ({ onAuthSuccess }) => {
   const [isLogin, setIsLogin] = useState(true);
 
   /**
-   * Alterna entre login e registro
+   * Toggles between login and register
    */
   const toggleAuthMode = () => {
     setIsLogin(prev => !prev);
   };
 
   /**
-   * Manipula sucesso da autenticação
+   * Handles authentication success
    */
   const handleAuthSuccess = () => {
     if (onAuthSuccess) {
@@ -86,7 +86,7 @@ const AuthPage = ({ onAuthSuccess }) => {
             gap: { xs: 3, sm: 4 },
           }}
         >
-          {/* Header com logo - apenas se não mobile */}
+          {/* Header with logo - only if not mobile */}
           {!isMobile && (
             <Fade in timeout={800}>
               <Box sx={{ textAlign: 'center', mb: { xs: 1, sm: 2 } }}>
@@ -145,7 +145,7 @@ const AuthPage = ({ onAuthSuccess }) => {
                     opacity: 0.9,
                   }}
                 >
-                  Seu assistente de IA inteligente
+                  Your intelligent AI assistant
                 </Typography>
                 
                 <Typography
@@ -160,15 +160,15 @@ const AuthPage = ({ onAuthSuccess }) => {
                   }}
                 >
                   {isLogin 
-                    ? 'Entre na sua conta para continuar conversando com a IA mais avançada'
-                    : 'Junte-se a milhares de usuários e descubra o poder da inteligência artificial'
+                    ? 'Sign in to your account to continue chatting with the most advanced AI'
+                    : 'Join thousands of users and discover the power of artificial intelligence'
                   }
                 </Typography>
               </Box>
             </Fade>
           )}
 
-          {/* Formulário de autenticação */}
+          {/* Authentication form */}
           <Box 
             sx={{ 
               width: '100%', 
@@ -199,7 +199,7 @@ const AuthPage = ({ onAuthSuccess }) => {
             </Slide>
           </Box>
 
-          {/* Features - apenas se não mobile e não login */}
+          {/* Features - only if not mobile and not login */}
           {!isMobile && !isLogin && (
             <Fade in timeout={1400}>
               <Box 
@@ -213,9 +213,9 @@ const AuthPage = ({ onAuthSuccess }) => {
                 }}
               >
                 {[
-                  { icon: '🤖', title: 'IA Avançada', desc: 'Powered by Ollama' },
-                  { icon: '💬', title: 'Chat Inteligente', desc: 'Conversas naturais' },
-                  { icon: '🚀', title: 'Rápido & Seguro', desc: 'Privacidade garantida' },
+                  { icon: '🤖', title: 'Advanced AI', desc: 'Powered by Ollama' },
+                  { icon: '💬', title: 'Smart Chat', desc: 'Natural conversations' },
+                  { icon: '🚀', title: 'Fast & Secure', desc: 'Privacy guaranteed' },
                 ].map((feature, index) => (
                   <Box
                     key={index}
@@ -253,14 +253,14 @@ const AuthPage = ({ onAuthSuccess }) => {
                   fontSize: '0.8rem'
                 }}
               >
-                © 2024 XandAI. Desenvolvido com ❤️ para uma experiência de IA incrível.
+                © 2024 XandAI. Built with ❤️ for an incredible AI experience.
               </Typography>
             </Box>
           </Fade>
         </Box>
       </Container>
 
-      {/* Efeitos decorativos */}
+      {/* Decorative effects */}
       <Box
         sx={{
           position: 'absolute',

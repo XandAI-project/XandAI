@@ -1,0 +1,30 @@
+# Dependencies
+node_modules
+
+# Build output
+dist
+
+# Development files
+.git
+.env
+*.md
+
+# IDE
+.vscode
+.idea
+
+# Data files
+data
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test files
+coverage
+*.test.ts
+*.spec.ts
+__tests__
+

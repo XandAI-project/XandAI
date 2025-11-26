@@ -33,19 +33,19 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Componente da sidebar com histórico de conversas
- * @param {Object} props - Props do componente
- * @param {boolean} props.open - Se a sidebar está aberta
- * @param {Function} props.onClose - Callback para fechar a sidebar
- * @param {Function} props.onNewChat - Callback para iniciar novo chat
- * @param {Array} props.chatHistory - Lista de conversas do histórico
- * @param {Function} props.onSelectChat - Callback para selecionar uma conversa
- * @param {Function} props.onSearchChats - Callback para buscar conversas
- * @param {Function} props.onEditTitle - Callback para editar título
- * @param {Function} props.onDeleteChat - Callback para excluir conversa
- * @param {string} props.currentChatId - ID da conversa atual
- * @param {boolean} props.isLoading - Se está carregando o histórico
- * @param {boolean} props.isLoadingSession - Se está carregando uma sessão
+ * Sidebar component with conversation history
+ * @param {Object} props - Component props
+ * @param {boolean} props.open - Whether the sidebar is open
+ * @param {Function} props.onClose - Callback to close the sidebar
+ * @param {Function} props.onNewChat - Callback to start new chat
+ * @param {Array} props.chatHistory - List of conversation history
+ * @param {Function} props.onSelectChat - Callback to select a conversation
+ * @param {Function} props.onSearchChats - Callback to search conversations
+ * @param {Function} props.onEditTitle - Callback to edit title
+ * @param {Function} props.onDeleteChat - Callback to delete conversation
+ * @param {string} props.currentChatId - Current conversation ID
+ * @param {boolean} props.isLoading - Whether it's loading the history
+ * @param {boolean} props.isLoadingSession - Whether it's loading a session
  */
 const ChatSidebar = ({ 
   open, 
@@ -68,13 +68,13 @@ const ChatSidebar = ({
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
 
-  // Filtrar conversas baseado na pesquisa
+  // Filter conversations based on search
   const filteredChats = chatHistory.filter(chat =>
     chat.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     chat.preview?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Agrupar conversas por data
+  // Group conversations by date
   const groupedChats = filteredChats.reduce((groups, chat) => {
     const date = new Date(chat.updatedAt || chat.createdAt);
     const today = new Date();
@@ -106,7 +106,7 @@ const ChatSidebar = ({
    */
   const handleStartEdit = (chat) => {
     setEditingId(chat.id);
-    setEditTitle(chat.title || 'Nova conversa');
+    setEditTitle(chat.title || 'New conversation');
   };
 
   /**
@@ -119,7 +119,7 @@ const ChatSidebar = ({
         setEditingId(null);
         setEditTitle('');
       } catch (error) {
-        console.error('Erro ao salvar título:', error);
+        console.error('Error saving title:', error);
       }
     }
   };
@@ -140,7 +140,7 @@ const ChatSidebar = ({
       try {
         await onDeleteChat(chatId);
       } catch (error) {
-        console.error('Erro ao excluir conversa:', error);
+        console.error('Error deleting conversation:', error);
       }
     }
   };
@@ -152,7 +152,7 @@ const ChatSidebar = ({
     const value = event.target.value;
     setSearchTerm(value);
     
-    // Debounce da busca
+    // Search debounce
     if (onSearchChats) {
       clearTimeout(window.searchTimeout);
       window.searchTimeout = setTimeout(() => {
@@ -232,18 +232,18 @@ const ChatSidebar = ({
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <HistoryIcon sx={{ color: theme.palette.primary.main }} />
             <Typography variant="h6" fontWeight={600}>
-              Histórico
+              History
             </Typography>
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <Tooltip title="Nova conversa">
+            <Tooltip title="New conversation">
               <IconButton onClick={onNewChat} size="small">
                 <AddIcon />
               </IconButton>
             </Tooltip>
             
-            <Tooltip title="Fechar">
+            <Tooltip title="Close">
               <IconButton onClick={onClose} size="small">
                 <CloseIcon />
               </IconButton>
@@ -258,7 +258,7 @@ const ChatSidebar = ({
           backgroundColor: theme.palette.background.default
         }}>
           <Typography variant="body2" color="text.secondary">
-            Logado como
+            Logged in as
           </Typography>
           <Typography variant="subtitle2" fontWeight={600}>
             {getFullName()}
@@ -270,7 +270,7 @@ const ChatSidebar = ({
           <TextField
             fullWidth
             size="small"
-            placeholder="Buscar conversas..."
+            placeholder="Search conversations..."
             value={searchTerm}
             onChange={handleSearchChange}
             InputProps={{
@@ -304,10 +304,10 @@ const ChatSidebar = ({
             }}>
               <ChatIcon sx={{ fontSize: 48, mb: 2, opacity: 0.5 }} />
               <Typography variant="body2">
-                {searchTerm ? 'Nenhuma conversa encontrada' : 'Nenhuma conversa ainda'}
+                {searchTerm ? 'No conversations found' : 'No conversations yet'}
               </Typography>
               <Typography variant="caption" sx={{ mt: 1, display: 'block' }}>
-                {searchTerm ? 'Tente buscar por outros termos' : 'Inicie uma nova conversa'}
+                {searchTerm ? 'Try searching with different terms' : 'Start a new conversation'}
               </Typography>
             </Box>
           ) : (
@@ -382,7 +382,7 @@ const ChatSidebar = ({
                                   whiteSpace: 'nowrap'
                                 }}
                               >
-                                {chat.title || 'Nova conversa'}
+                                {chat.title || 'New conversation'}
                               </Typography>
                             )
                           }
@@ -398,7 +398,7 @@ const ChatSidebar = ({
                                   opacity: 0.7
                                 }}
                               >
-                                {chat.preview || 'Sem prévia'}
+                                {chat.preview || 'No preview'}
                               </Typography>
                               
                               <Chip 
@@ -417,7 +417,7 @@ const ChatSidebar = ({
                         
                         {!editingId && (
                           <Box sx={{ display: 'flex', gap: 0.5 }}>
-                            <Tooltip title="Editar título">
+                            <Tooltip title="Edit title">
                               <IconButton 
                                 size="small" 
                                 onClick={(e) => {
@@ -429,7 +429,7 @@ const ChatSidebar = ({
                               </IconButton>
                             </Tooltip>
                             
-                            <Tooltip title="Excluir conversa">
+                            <Tooltip title="Delete conversation">
                               <IconButton 
                                 size="small" 
                                 onClick={(e) => {
@@ -466,7 +466,7 @@ const ChatSidebar = ({
             onClick={onNewChat}
             sx={{ borderRadius: 2 }}
           >
-            Nova Conversa
+            New Conversation
           </Button>
         </Box>
 

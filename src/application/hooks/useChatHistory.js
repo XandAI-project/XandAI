@@ -13,7 +13,7 @@ export const useChatHistory = () => {
   const [error, setError] = useState(null);
 
   /**
-   * Busca todas as sessões do usuário
+   * Fetches all user sessions
    */
   const fetchChatSessions = useCallback(async () => {
     try {

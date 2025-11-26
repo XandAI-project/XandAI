@@ -262,7 +262,7 @@ const GenerateImageButton = ({ chatResponse, messageId, compact = false, onImage
         </Box>
       )}
 
-      {/* Botão de gerar imagem - centralizado */}
+      {/* Generate image button - centered */
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
         <Button
           variant="contained"
@@ -284,7 +284,7 @@ const GenerateImageButton = ({ chatResponse, messageId, compact = false, onImage
             }
           }}
         >
-          {isLoading ? 'Gerando...' : 'Gerar Imagem'}
+          {isLoading ? 'Generating...' : 'Generate Image'}
         </Button>
       </Box>
 

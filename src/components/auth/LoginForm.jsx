@@ -29,10 +29,10 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 
 /**
- * Componente de formulário de login
- * @param {Object} props - Props do componente
- * @param {Function} props.onSwitchToRegister - Callback para alternar para registro
- * @param {Function} props.onLoginSuccess - Callback para login bem-sucedido
+ * Login form component
+ * @param {Object} props - Component props
+ * @param {Function} props.onSwitchToRegister - Callback to switch to register
+ * @param {Function} props.onLoginSuccess - Callback for successful login
  */
 const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
   const theme = useTheme();
@@ -47,8 +47,8 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
   const [error, setError] = useState('');
 
   /**
-   * Manipula mudanças nos campos do formulário
-   * @param {Event} event - Evento de mudança
+   * Handles form field changes
+   * @param {Event} event - Change event
    */
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -57,28 +57,28 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
       [name]: value
     }));
     
-    // Limpa erro ao digitar
+    // Clear error when typing
     if (error) {
       setError('');
     }
   };
 
   /**
-   * Manipula envio do formulário
-   * @param {Event} event - Evento de envio
+   * Handles form submission
+   * @param {Event} event - Submit event
    */
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
 
-    // Validação básica
+    // Basic validation
     if (!formData.email || !formData.password) {
-      setError('Por favor, preencha todos os campos');
+      setError('Please fill in all fields');
       return;
     }
 
     if (!isValidEmail(formData.email)) {
-      setError('Por favor, insira um email válido');
+      setError('Please enter a valid email');
       return;
     }
 
@@ -88,15 +88,15 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
         onLoginSuccess();
       }
     } catch (error) {
-      console.error('Erro no login:', error);
-      setError(error.message || 'Erro ao fazer login. Tente novamente.');
+      console.error('Login error:', error);
+      setError(error.message || 'Error logging in. Please try again.');
     }
   };
 
   /**
-   * Valida formato do email
-   * @param {string} email - Email a ser validado
-   * @returns {boolean} - Se o email é válido
+   * Validates email format
+   * @param {string} email - Email to be validated
+   * @returns {boolean} - Whether the email is valid
    */
   const isValidEmail = (email) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -104,13 +104,13 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
   };
 
   /**
-   * Alterna visibilidade da senha
+   * Toggles password visibility
    */
   const togglePasswordVisibility = () => {
     setShowPassword(prev => !prev);
   };
 
-  // Estilo simples e uniforme
+  // Simple and uniform style
   const inputSx = {
     mb: 2,
     '& .MuiOutlinedInput-root': {
@@ -152,7 +152,7 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
             '&:last-child': { pb: { xs: 3, sm: 4, md: 5 } }
           }}
         >
-          {/* Cabeçalho */}
+          {/* Header */}
           <Slide direction="down" in timeout={800}>
             <Box sx={{ textAlign: 'center', mb: { xs: 3, sm: 4 } }}>
               <Box
@@ -197,7 +197,7 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
                   mb: 1
                 }}
               >
-                Bem-vindo de volta
+                Welcome back
               </Typography>
               
               <Typography 
@@ -208,12 +208,12 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
                   opacity: 0.8
                 }}
               >
-                Entre na sua conta do XandAI
+                Sign in to your XandAI account
               </Typography>
             </Box>
           </Slide>
 
-          {/* Formulário - Container com largura fixa */}
+          {/* Form - Container with fixed width */}
           <Slide direction="up" in timeout={1000}>
             <Box 
               component="form" 
@@ -224,14 +224,14 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
                 mx: 'auto'
               }}
             >
-              {/* Alert de erro */}
+              {/* Error alert */}
               {error && (
                 <Alert severity="error" sx={{ mb: 2 }}>
                   {error}
                 </Alert>
               )}
 
-              {/* Campos com largura fixa */}
+              {/* Fields with fixed width */}
               <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                 
                 {/* Email */}
@@ -253,11 +253,11 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
                   }}
                 />
 
-                {/* Senha */}
+                {/* Password */}
                 <TextField
                   name="password"
                   type={showPassword ? 'text' : 'password'}
-                  label="Senha"
+                  label="Password"
                   required
                   value={formData.password}
                   onChange={handleChange}
@@ -281,7 +281,7 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
 
               </Box>
 
-              {/* Botão de login */}
+              {/* Login button */}
               <Button
                 type="submit"
                 fullWidth
@@ -316,20 +316,20 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
                 {isLoading ? (
                   <CircularProgress size={24} color="inherit" />
                 ) : (
-                  'Entrar'
+                  'Sign In'
                 )}
               </Button>
 
               <Divider sx={{ my: 2 }}>
                 <Typography variant="caption" color="text.secondary">
-                  ou
+                  or
                 </Typography>
               </Divider>
 
-              {/* Link para registro */}
+              {/* Register link */}
               <Box sx={{ textAlign: 'center' }}>
                 <Typography variant="body2" color="text.secondary">
-                  Não tem uma conta?
+                  Don't have an account?
                 </Typography>
                 <Button
                   variant="text"
@@ -347,7 +347,7 @@ const LoginForm = ({ onSwitchToRegister, onLoginSuccess }) => {
                     transition: 'all 0.2s ease',
                   }}
                 >
-                  Criar conta gratuita
+                  Create free account
                 </Button>
               </Box>
             </Box>

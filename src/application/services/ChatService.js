@@ -17,14 +17,14 @@ export class ChatService {
   }
 
   /**
-   * Envia uma mensagem do usuário e obtém a resposta do assistente
-   * @param {string} messageContent - Conteúdo da mensagem
-   * @param {Function} onToken - Callback para streaming de tokens (opcional)
+   * Sends a user message and gets the assistant's response
+   * @param {string} messageContent - Message content
+   * @param {Function} onToken - Callback for token streaming (optional)
    * @returns {Promise<{userMessage: Message, assistantMessage: Message}>}
    */
   async sendMessage(messageContent, onToken = null) {
     try {
-      // Cria a mensagem do usuário
+      // Creates the user message
       const userMessage = Message.createUserMessage(messageContent);
       
       // Adiciona à sessão

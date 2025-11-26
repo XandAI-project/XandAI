@@ -1,0 +1,52 @@
+# Dependencies
+node_modules
+backend/node_modules
+
+# Build outputs
+build
+dist
+backend/dist
+
+# Development files
+.git
+.gitignore
+.env
+.env.local
+.env.docker
+*.md
+!README.md
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+coverage
+*.test.js
+*.spec.js
+__tests__
+
+# Docker files (prevent recursive copy)
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# Data files
+backend/data
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+.eslintcache
+.npm
+
