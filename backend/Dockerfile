@@ -10,15 +10,15 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including dev)
+# Install all dependencies (including dev for build)
 RUN npm ci
 
-# Copy source code
+# Copy source code and config
 COPY tsconfig.json ./
 COPY nest-cli.json ./
 COPY src/ ./src/
 
-# Build the application
+# Build the application (tsc + tsc-alias to resolve path aliases)
 RUN npm run build
 
 # Stage 2: Production image
@@ -42,8 +42,8 @@ COPY --from=builder /app/dist ./dist
 # Copy public assets
 COPY public/ ./public/
 
-# Create data directory for SQLite (dev fallback)
-RUN mkdir -p data && chown -R nestjs:nodejs data public
+# Create data directory for SQLite (dev fallback) and ensure permissions
+RUN mkdir -p data && chown -R nestjs:nodejs data public /app
 
 # Switch to non-root user
 USER nestjs
@@ -51,10 +51,5 @@ USER nestjs
 # Expose port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD node -e "require('http').get('http://localhost:3001/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))" || exit 1
-
 # Start the application
 CMD ["node", "dist/main"]
-

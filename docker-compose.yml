@@ -42,10 +42,13 @@ services:
       DB_NAME: ${DB_NAME:-xandai}
       DB_SSL: "false"
       DB_LOGGING: ${DB_LOGGING:-false}
-      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://ollama:11434}
+      # Ollama runs on host machine, use host.docker.internal to access it
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2}
     ports:
       - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       postgres:
         condition: service_healthy
@@ -70,32 +73,10 @@ services:
     networks:
       - xandai-network
 
-  # Ollama AI Service (Optional - uncomment to use)
-  ollama:
-    image: ollama/ollama:latest
-    container_name: xandai-ollama
-    restart: unless-stopped
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - xandai-network
-    # GPU support (uncomment for NVIDIA GPU)
-    # deploy:
-    #   resources:
-    #     reservations:
-    #       devices:
-    #         - driver: nvidia
-    #           count: all
-    #           capabilities: [gpu]
-
 volumes:
   postgres_data:
-  ollama_data:
   backend_public:
 
 networks:
   xandai-network:
     driver: bridge
-
