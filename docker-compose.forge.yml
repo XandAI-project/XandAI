@@ -33,7 +33,7 @@ services:
       # Optional: Civitai token for downloading models
       CIVITAI_TOKEN: ${CIVITAI_TOKEN:-}
     ports:
-      - "7860:7860"
+      - "7865:7860"
     volumes:
       # Persistent workspace
       - forge_workspace:/workspace
