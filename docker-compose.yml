@@ -43,6 +43,12 @@ services:
       # Ollama runs on host machine, use host.docker.internal to access it
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       OLLAMA_DEFAULT_MODEL: ${OLLAMA_DEFAULT_MODEL:-llama3.2}
+      # Stable Diffusion Forge (optional - enable with docker-compose.forge.yml)
+      SD_ENABLED: ${SD_ENABLED:-false}
+      SD_BASE_URL: ${SD_BASE_URL:-http://host.docker.internal:7685}
+      SD_API_USER: ${SD_API_USER:-}
+      SD_API_PASSWORD: ${SD_API_PASSWORD:-}
+      SD_DEFAULT_MODEL: ${SD_DEFAULT_MODEL:-sd_xl_base_1.0.safetensors}
     ports:
       - "3001:3001"
     extra_hosts:

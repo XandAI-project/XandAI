@@ -1,0 +1,73 @@
+# ===========================================
+# XandAI - Stable Diffusion Forge (Optional)
+# ===========================================
+#
+# Deploy with: docker compose -f docker-compose.yml -f docker-compose.forge.yml up -d
+#
+# Requirements:
+# - NVIDIA GPU with CUDA support (12GB+ VRAM recommended for SDXL)
+# - nvidia-container-toolkit installed
+# - First run will download SDXL model (~6.5GB)
+#
+# Access Forge WebUI at: http://your-server:7685
+# API is available at: http://your-server:7685/sdapi/v1/
+
+services:
+  # Stable Diffusion Forge WebUI with SDXL
+  forge:
+    image: ghcr.io/ai-dock/stable-diffusion-webui-forge:latest
+    container_name: xandai-forge
+    restart: unless-stopped
+    environment:
+      # WebUI Settings
+      WEBUI_PORT: 7860
+      AUTO_UPDATE: "false"
+      PROVISIONING_SCRIPT: "https://raw.githubusercontent.com/ai-dock/stable-diffusion-webui-forge/main/config/provisioning/default.sh"
+      # Command line args for Forge
+      WEBUI_FLAGS: >-
+        --api
+        --listen
+        --enable-insecure-extension-access
+        --no-half-vae
+        --xformers
+    ports:
+      - "${SD_PORT:-7685}:7860"
+    volumes:
+      - forge_data:/workspace
+      - forge_models:/workspace/stable-diffusion-webui-forge/models/Stable-diffusion
+      - forge_outputs:/workspace/stable-diffusion-webui-forge/outputs
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:7860/sdapi/v1/sd-models || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 600s
+    networks:
+      - xandai-network
+
+  # Override backend to enable SD and connect to Forge
+  backend:
+    environment:
+      # Enable Stable Diffusion auto-configuration
+      SD_ENABLED: "true"
+      SD_BASE_URL: http://forge:7860
+      SD_API_USER: ""
+      SD_API_PASSWORD: ""
+      SD_DEFAULT_MODEL: ${SD_DEFAULT_MODEL:-sd_xl_base_1.0.safetensors}
+    depends_on:
+      - postgres
+
+volumes:
+  forge_data:
+    driver: local
+  forge_models:
+    driver: local
+  forge_outputs:
+    driver: local
