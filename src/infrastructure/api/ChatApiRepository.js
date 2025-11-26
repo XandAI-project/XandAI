@@ -198,21 +198,52 @@ export class ChatApiRepository extends ChatRepository {
   }
 
   /**
-   * Limpa o histórico de mensagens (cria uma nova sessão)
+   * Limpa o histórico de mensagens (arquiva todas as sessões)
    * @returns {Promise<void>}
    */
   async clearHistory() {
     try {
-      // Clear current session ID to start fresh
+      const token = this.getAuthToken();
+      
+      if (!token) {
+        // Just clear local state if not authenticated
+        this.currentSessionId = null;
+        return;
+      }
+
+      // Get all sessions and archive them
+      const response = await fetch(`${this.baseURL}/chat/sessions`, {
+        method: 'GET',
+        headers: this.getAuthHeaders()
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const sessions = data.sessions || data || [];
+        
+        // Archive each session
+        for (const session of sessions) {
+          if (session.id && session.status === 'active') {
+            try {
+              await fetch(`${this.baseURL}/chat/sessions/${session.id}/archive`, {
+                method: 'PUT',
+                headers: this.getAuthHeaders()
+              });
+            } catch (err) {
+              console.warn(`Failed to archive session ${session.id}:`, err);
+            }
+          }
+        }
+      }
+
+      // Clear current session ID
       this.currentSessionId = null;
       
-      // Optionally, we could archive or delete the current session
-      // For now, just clearing the local reference is enough
-      // as a new session will be created on next message
-      
-      console.log('Histórico limpo - nova sessão será criada');
+      console.log('Histórico limpo - todas as sessões foram arquivadas');
     } catch (error) {
       console.error('Erro ao limpar histórico:', error);
+      // Still clear local state even if backend fails
+      this.currentSessionId = null;
       throw error;
     }
   }

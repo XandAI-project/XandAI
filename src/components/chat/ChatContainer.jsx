@@ -99,6 +99,8 @@ const ChatContainer = () => {
   const handleClearHistory = async () => {
     try {
       await clearHistory();
+      // Refresh sessions list (archived sessions will be filtered out)
+      await fetchChatSessions();
       setClearDialogOpen(false);
     } catch (err) {
       console.error('Error clearing history:', err);
@@ -166,13 +168,18 @@ const ChatContainer = () => {
    */
   const handleNewChat = async () => {
     try {
+      // First archive all current sessions
+      await clearHistory();
+      
+      // Create a new session
       const newSession = await createNewSession();
-      clearHistory(); // Clear current messages
+      
+      // Refresh the sessions list (archived sessions will be filtered out)
+      await fetchChatSessions();
       
       // Set new session as active
       if (newSession && newSession.id) {
         setSession(newSession.id);
-
       }
       
       setSidebarOpen(false);
