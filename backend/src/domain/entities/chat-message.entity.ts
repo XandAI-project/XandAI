@@ -40,7 +40,7 @@ export class ChatMessage {
   @Column({ type: 'text', nullable: true })
   error?: string;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   processedAt?: Date;
 
   @CreateDateColumn()

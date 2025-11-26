@@ -27,7 +27,7 @@ export class ChatSession {
     [key: string]: any;
   };
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   lastActivityAt?: Date;
 
   @CreateDateColumn()

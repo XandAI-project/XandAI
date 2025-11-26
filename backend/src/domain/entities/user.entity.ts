@@ -36,7 +36,7 @@ export class User {
   @Column({ type: 'text', nullable: true })
   avatar?: string;
 
-  @Column({ type: 'datetime', nullable: true })
+  @Column({ type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
 
   @CreateDateColumn()
