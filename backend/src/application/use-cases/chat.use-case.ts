@@ -36,8 +36,6 @@ export class ChatUseCase {
    * Cria uma nova sessão de chat
    */
   async createSession(userId: string, createSessionDto: CreateChatSessionDto): Promise<ChatSessionResponseDto> {
-    // Garante que o usuário de teste existe
-    await this.ensureTestUserExists(userId);
     // Verifica se o usuário existe
     const user = await this.userRepository.findById(userId);
     if (!user) {
@@ -65,9 +63,6 @@ export class ChatUseCase {
     page: number = 1, 
     limit: number = 20
   ): Promise<{ sessions: ChatSessionResponseDto[]; total: number }> {
-    // Garante que o usuário de teste existe
-    await this.ensureTestUserExists(userId);
-    
     const { sessions, total } = await this.chatSessionRepository.findByUserId(userId, page, limit);
     
     return {
@@ -233,9 +228,6 @@ export class ChatUseCase {
    * Obtém mensagens recentes do usuário
    */
   async getRecentMessages(userId: string, limit: number = 50): Promise<{ messages: ChatMessageResponseDto[] }> {
-    // Garante que o usuário de teste existe
-    await this.ensureTestUserExists(userId);
-    
     const messages = await this.chatMessageRepository.findRecentByUserId(userId, limit);
     
     return {
@@ -456,9 +448,6 @@ export class ChatUseCase {
     messageId: string,
     messageData: { id: string; content: string; role: string; chatSessionId?: string }
   ): Promise<ChatMessageResponseDto> {
-    // Garante que o usuário de teste existe
-    await this.ensureTestUserExists(userId);
-    
     // Busca ou cria uma sessão
     let sessionId = messageData.chatSessionId;
     if (!sessionId) {
@@ -510,9 +499,6 @@ export class ChatUseCase {
     originalPrompt?: string,
     metadata?: any
   ): Promise<ChatMessageResponseDto> {
-    // Garante que o usuário de teste existe
-    await this.ensureTestUserExists(userId);
-    
     // Busca a mensagem existente ou cria se não existir
     let message = await this.chatMessageRepository.findById(messageId);
     if (!message) {
@@ -604,29 +590,4 @@ export class ChatUseCase {
     }
   }
 
-  /**
-   * Garante que o usuário de teste existe
-   */
-  private async ensureTestUserExists(userId: string): Promise<void> {
-    try {
-      const existingUser = await this.userRepository.findById(userId);
-      if (!existingUser) {
-        // Cria usuário de teste
-        await this.userRepository.create({
-          id: userId,
-          email: 'test@example.com',
-          firstName: 'Test',
-          lastName: 'User',
-          password: 'test-password', // Em produção, seria hasheado
-          isActive: true,
-          role: 'user',
-          theme: 'light'
-        });
-        console.log(`✅ Usuário de teste criado: ${userId}`);
-      }
-    } catch (error) {
-      console.warn('Erro ao criar usuário de teste:', error);
-      // Não falha se não conseguir criar o usuário
-    }
   }
-}

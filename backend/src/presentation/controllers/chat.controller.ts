@@ -33,6 +33,7 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
  * Controller responsável pelas operações de chat
  */
 @Controller('chat')
+@UseGuards(JwtAuthGuard)
 export class ChatController {
   constructor(private readonly chatUseCase: ChatUseCase) {}
 
@@ -42,10 +43,10 @@ export class ChatController {
   @Post('sessions')
   @HttpCode(HttpStatus.CREATED)
   async createSession(
+    @Request() req,
     @Body(ValidationPipe) createSessionDto: CreateChatSessionDto,
   ): Promise<ChatSessionResponseDto> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.createSession(testUserId, createSessionDto);
+    return await this.chatUseCase.createSession(req.user.id, createSessionDto);
   }
 
   /**
@@ -53,11 +54,11 @@ export class ChatController {
    */
   @Get('sessions')
   async getUserSessions(
+    @Request() req,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(20), ParseIntPipe) limit: number,
   ): Promise<{ sessions: ChatSessionResponseDto[]; total: number }> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.getUserSessions(testUserId, page, limit);
+    return await this.chatUseCase.getUserSessions(req.user.id, page, limit);
   }
 
   /**
@@ -65,10 +66,10 @@ export class ChatController {
    */
   @Get('sessions/:sessionId')
   async getSessionWithMessages(
+    @Request() req,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
   ): Promise<ChatSessionResponseDto> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.getSessionWithMessages(testUserId, sessionId);
+    return await this.chatUseCase.getSessionWithMessages(req.user.id, sessionId);
   }
 
   /**
@@ -76,11 +77,11 @@ export class ChatController {
    */
   @Put('sessions/:sessionId')
   async updateSession(
+    @Request() req,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Body(ValidationPipe) updateSessionDto: UpdateChatSessionDto,
   ): Promise<ChatSessionResponseDto> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.updateSession(testUserId, sessionId, updateSessionDto);
+    return await this.chatUseCase.updateSession(req.user.id, sessionId, updateSessionDto);
   }
 
   /**
@@ -89,10 +90,10 @@ export class ChatController {
   @Put('sessions/:sessionId/archive')
   @HttpCode(HttpStatus.NO_CONTENT)
   async archiveSession(
+    @Request() req,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
   ): Promise<void> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.archiveSession(testUserId, sessionId);
+    return await this.chatUseCase.archiveSession(req.user.id, sessionId);
   }
 
   /**
@@ -101,10 +102,10 @@ export class ChatController {
   @Delete('sessions/:sessionId')
   @HttpCode(HttpStatus.NO_CONTENT)
   async deleteSession(
+    @Request() req,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
   ): Promise<void> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.deleteSession(testUserId, sessionId);
+    return await this.chatUseCase.deleteSession(req.user.id, sessionId);
   }
 
   /**
@@ -113,10 +114,10 @@ export class ChatController {
   @Post('messages')
   @HttpCode(HttpStatus.CREATED)
   async sendMessage(
+    @Request() req,
     @Body(ValidationPipe) sendMessageDto: SendMessageDto,
   ): Promise<SendMessageResponseDto> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.sendMessage(testUserId, sendMessageDto);
+    return await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
   }
 
   /**
@@ -148,8 +149,7 @@ export class ChatController {
       }
     };
     
-    const testUserId = 'test-user-id';
-    const response = await this.chatUseCase.sendMessage(testUserId, sendMessageDto);
+    const response = await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
     return {
       userMessage: response.userMessage,
       assistantMessage: response.assistantMessage,
@@ -162,11 +162,11 @@ export class ChatController {
   @Post('sessions/:sessionId/messages')
   @HttpCode(HttpStatus.CREATED)
   async addMessageToSession(
+    @Request() req,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Body(ValidationPipe) messageData: { content: string; role: string },
   ): Promise<ChatMessageResponseDto> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.addMessageToSession(testUserId, sessionId, messageData.content, messageData.role);
+    return await this.chatUseCase.addMessageToSession(req.user.id, sessionId, messageData.content, messageData.role);
   }
 
   /**
@@ -174,12 +174,12 @@ export class ChatController {
    */
   @Get('sessions/:sessionId/messages')
   async getSessionMessages(
+    @Request() req,
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
     @Query('page', new DefaultValuePipe(1), ParseIntPipe) page: number,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
   ): Promise<{ messages: ChatMessageResponseDto[]; total: number }> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.getSessionMessages(testUserId, sessionId, page, limit);
+    return await this.chatUseCase.getSessionMessages(req.user.id, sessionId, page, limit);
   }
 
   /**
@@ -187,11 +187,10 @@ export class ChatController {
    */
   @Get('messages/recent')
   async getRecentMessages(
+    @Request() req,
     @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit: number,
   ): Promise<{ messages: ChatMessageResponseDto[] }> {
-    // Usando ID fixo para teste sem autenticação
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.getRecentMessages(testUserId, limit);
+    return await this.chatUseCase.getRecentMessages(req.user.id, limit);
   }
 
   /**
@@ -199,10 +198,10 @@ export class ChatController {
    */
   @Post('messages/search')
   async searchMessages(
+    @Request() req,
     @Body(ValidationPipe) searchDto: SearchMessagesDto,
   ): Promise<ChatMessageResponseDto[]> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.searchMessages(testUserId, searchDto);
+    return await this.chatUseCase.searchMessages(req.user.id, searchDto);
   }
 
   /**
@@ -211,6 +210,7 @@ export class ChatController {
   @Put('messages/:messageId')
   @HttpCode(HttpStatus.OK)
   async createOrUpdateMessage(
+    @Request() req,
     @Param('messageId') messageId: string,
     @Body(ValidationPipe) messageData: { 
       id: string;
@@ -219,8 +219,7 @@ export class ChatController {
       chatSessionId?: string;
     },
   ): Promise<ChatMessageResponseDto> {
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.createOrUpdateMessage(testUserId, messageId, messageData);
+    return await this.chatUseCase.createOrUpdateMessage(req.user.id, messageId, messageData);
   }
 
   /**
@@ -229,6 +228,7 @@ export class ChatController {
   @Post('messages/:messageId/attachments/image')
   @HttpCode(HttpStatus.CREATED)
   async attachImageToMessage(
+    @Request() req,
     @Param('messageId') messageId: string,
     @Body(ValidationPipe) attachmentData: { 
       imageUrl: string; 
@@ -237,10 +237,8 @@ export class ChatController {
       metadata?: any 
     },
   ): Promise<ChatMessageResponseDto> {
-    // Usando ID fixo para teste sem autenticação
-    const testUserId = 'test-user-id';
     return await this.chatUseCase.attachImageToMessage(
-      testUserId, 
+      req.user.id, 
       messageId, 
       attachmentData.imageUrl, 
       attachmentData.filename, 
@@ -256,11 +254,9 @@ export class ChatController {
   @Post('messages/stream')
   @HttpCode(HttpStatus.CREATED)
   async sendMessageStream(
+    @Request() req,
     @Body(ValidationPipe) sendMessageDto: SendMessageDto,
   ): Promise<SendMessageResponseDto> {
-    // Por enquanto, usa o mesmo método de envio de mensagem
-    // Em uma implementação real, seria configurado streaming
-    const testUserId = 'test-user-id';
-    return await this.chatUseCase.sendMessage(testUserId, sendMessageDto);
+    return await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
   }
 }
