@@ -18,6 +18,11 @@ services:
     image: ghcr.io/ai-dock/stable-diffusion-webui-forge:latest
     container_name: xandai-forge
     restart: unless-stopped
+    # Fix DNS resolution issues
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
+      - 1.1.1.1
     environment:
       # Auto-update on startup
       AUTO_UPDATE: "false"
