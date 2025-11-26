@@ -93,7 +93,9 @@ const RegisterForm = ({ onSwitchToLogin, onRegisterSuccess }) => {
     }
 
     try {
-      const userData = await register(formData);
+      // Remove confirmPassword before sending to API
+      const { confirmPassword, ...registrationData } = formData;
+      const userData = await register(registrationData);
       if (onRegisterSuccess) {
         onRegisterSuccess(userData);
       }
