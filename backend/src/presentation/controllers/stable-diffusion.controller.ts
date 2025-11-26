@@ -4,17 +4,23 @@ import {
   Get,
   Body,
   Query,
+  Param,
+  Res,
   HttpCode,
   HttpStatus,
   Request,
   ValidationPipe,
   UseGuards,
   ParseIntPipe,
-  DefaultValuePipe
+  DefaultValuePipe,
+  NotFoundException
 } from '@nestjs/common';
+import { Response } from 'express';
 import { IsString, IsOptional, IsNumber, IsPositive } from 'class-validator';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 import { StableDiffusionService, GenerateImageDto, GeneratedImageResult } from '../../infrastructure/services/stable-diffusion.service';
+import * as path from 'path';
+import * as fs from 'fs';
 
 export class GenerateImageRequestDto {
   @IsString()
@@ -201,6 +207,41 @@ export class StableDiffusionController {
   async listImages(): Promise<{ images: string[] }> {
     const images = await this.stableDiffusionService.listSavedImages();
     return { images };
+  }
+
+  /**
+   * Serve uma imagem específica pelo nome do arquivo
+   */
+  @Get('images/:filename')
+  async getImage(
+    @Param('filename') filename: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Sanitize filename to prevent path traversal
+    const sanitizedFilename = path.basename(filename);
+    const imagesDir = path.join(process.cwd(), 'public', 'images');
+    const imagePath = path.join(imagesDir, sanitizedFilename);
+
+    // Check if file exists
+    if (!fs.existsSync(imagePath)) {
+      throw new NotFoundException(`Image not found: ${sanitizedFilename}`);
+    }
+
+    // Determine content type
+    const ext = path.extname(sanitizedFilename).toLowerCase();
+    const contentTypes: Record<string, string> = {
+      '.png': 'image/png',
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.gif': 'image/gif',
+      '.webp': 'image/webp',
+    };
+    const contentType = contentTypes[ext] || 'application/octet-stream';
+
+    // Send the file
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Cache-Control', 'public, max-age=31536000'); // Cache for 1 year
+    fs.createReadStream(imagePath).pipe(res);
   }
 
   /**

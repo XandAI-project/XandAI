@@ -316,7 +316,8 @@ export class StableDiffusionService implements OnModuleInit {
       const imageBase64 = result.images[0];
       const filename = `sd_${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
       const imagePath = path.join(this.imagesDir, filename);
-      const imageUrl = `/images/${filename}`;
+      // Use API endpoint for reliable image serving
+      const imageUrl = `/api/v1/stable-diffusion/images/${filename}`;
 
       // Converter base64 para buffer e salvar
       const imageBuffer = Buffer.from(imageBase64, 'base64');
