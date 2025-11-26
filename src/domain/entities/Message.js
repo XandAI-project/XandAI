@@ -1,4 +1,16 @@
 /**
+ * Generates a proper UUID v4
+ * @returns {string} UUID string
+ */
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+};
+
+/**
  * Entidade Message - Representa uma mensagem no chat
  * @class Message
  */
@@ -73,7 +85,7 @@ export class Message {
    * @returns {Message}
    */
   static createUserMessage(content) {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const id = generateUUID();
     return new Message(id, content, 'user');
   }
 
@@ -83,7 +95,7 @@ export class Message {
    * @returns {Message}
    */
   static createAssistantMessage(content) {
-    const id = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+    const id = generateUUID();
     return new Message(id, content, 'assistant');
   }
 
@@ -92,7 +104,7 @@ export class Message {
    * @returns {Message}
    */
   static createTypingMessage() {
-    const id = 'typing-' + Date.now();
+    const id = generateUUID();
     return new Message(id, '', 'assistant', new Date(), true);
   }
 }

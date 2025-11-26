@@ -89,7 +89,7 @@ export const useChat = () => {
         setMessages(prev => [...prev, userMessage]);
 
         // Create empty response message for streaming
-        assistantMessageId = `msg_${Date.now()}_assistant`;
+        assistantMessageId = generateUUID();
         const streamingMessage = Message.createAssistantMessage('');
         streamingMessage.id = assistantMessageId;
         streamingMessage.isStreaming = true;
@@ -155,7 +155,7 @@ export const useChat = () => {
       }
 
       // Cria mensagem de resposta vazia para streaming
-      const assistantMessageId = `msg_${Date.now()}_assistant`;
+      const assistantMessageId = generateUUID();
       const streamingMessage = Message.createAssistantMessage('');
       streamingMessage.id = assistantMessageId;
       streamingMessage.isStreaming = true;
@@ -333,7 +333,7 @@ export const useChat = () => {
       const timestamp = msg.createdAt ? new Date(msg.createdAt) : new Date();
       
       const message = new Message(
-        msg.id || `msg_${Date.now()}_${Math.random()}`,
+        msg.id || generateUUID(),
         msg.content || '',
         sender,
         timestamp,
