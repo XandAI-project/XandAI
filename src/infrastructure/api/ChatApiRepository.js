@@ -230,20 +230,28 @@ export class ChatApiRepository extends ChatRepository {
         const data = await response.json();
         const sessions = data.sessions || data || [];
         
+        console.log(`Found ${sessions.length} sessions to delete:`, sessions.map(s => s.id));
+        
         // Delete each session
         for (const session of sessions) {
           if (session.id) {
             try {
-              await fetch(`${this.baseURL}/chat/sessions/${session.id}`, {
+              const deleteResponse = await fetch(`${this.baseURL}/chat/sessions/${session.id}`, {
                 method: 'DELETE',
                 headers: this.getAuthHeaders()
               });
-              console.log(`Deleted session ${session.id}`);
+              if (deleteResponse.ok || deleteResponse.status === 204) {
+                console.log(`✅ Deleted session ${session.id}`);
+              } else {
+                console.error(`❌ Failed to delete session ${session.id}: ${deleteResponse.status}`);
+              }
             } catch (err) {
               console.warn(`Failed to delete session ${session.id}:`, err);
             }
           }
         }
+      } else {
+        console.error(`Failed to fetch sessions: ${response.status}`);
       }
 
       // Clear current session ID
