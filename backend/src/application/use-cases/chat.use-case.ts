@@ -344,16 +344,37 @@ export class ChatUseCase {
 
     // Check if SD is available
     const sdStatus = this.stableDiffusionService.getConfigStatus();
+    this.logger.log(`SD Status: enabled=${sdStatus.enabled}, available=${sdStatus.available}, baseUrl=${sdStatus.baseUrl}, model=${sdStatus.defaultModel}`);
     
-    if (!sdStatus.enabled) {
-      return {
-        content: '🎨 I detected you want an image, but Stable Diffusion is not enabled on this server. Please ask your administrator to set up the image generation service.',
-        metadata: {
-          model: 'system',
-          imageGeneration: false,
-          reason: 'SD not enabled'
+    // Try to connect even if not marked as enabled (auto-detect)
+    if (!sdStatus.enabled && !sdStatus.available) {
+      // Try to auto-detect Forge
+      this.logger.log('SD not enabled, trying to auto-detect Forge...');
+      try {
+        const testResult = await this.stableDiffusionService.testConnection(sdStatus.baseUrl);
+        if (!testResult.success) {
+          return {
+            content: '🎨 I detected you want an image, but Stable Diffusion is not available. Please ensure Forge is running and configured.',
+            metadata: {
+              model: 'system',
+              imageGeneration: false,
+              reason: 'SD not available',
+              testResult
+            }
+          };
         }
-      };
+        this.logger.log('Forge auto-detected successfully!');
+      } catch (e) {
+        return {
+          content: '🎨 I detected you want an image, but could not connect to Stable Diffusion. Please check the Forge server.',
+          metadata: {
+            model: 'system',
+            imageGeneration: false,
+            reason: 'SD connection failed',
+            error: e.message
+          }
+        };
+      }
     }
 
     try {
