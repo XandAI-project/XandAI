@@ -11,6 +11,27 @@ export class ChatApiRepository extends ChatRepository {
     super();
     // Use relative URL for API - works with nginx proxy
     this.baseURL = '/api/v1';
+    this.tokenKey = 'xandai_auth_token';
+  }
+
+  /**
+   * Gets the auth token from localStorage
+   * @returns {string|null}
+   */
+  getAuthToken() {
+    return localStorage.getItem(this.tokenKey);
+  }
+
+  /**
+   * Gets auth headers for requests
+   * @returns {Object}
+   */
+  getAuthHeaders() {
+    const token = this.getAuthToken();
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { 'Authorization': `Bearer ${token}` })
+    };
   }
 
   /**
@@ -21,7 +42,7 @@ export class ChatApiRepository extends ChatRepository {
    */
   async sendMessage(message, onToken = null) {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = this.getAuthToken();
       
       if (!token) {
         throw new Error('Token de autenticação não encontrado');
@@ -29,10 +50,7 @@ export class ChatApiRepository extends ChatRepository {
 
       const response = await fetch(`${this.baseURL}/chat/send`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           content: message,
           streaming: !!onToken
@@ -107,11 +125,9 @@ export class ChatApiRepository extends ChatRepository {
    */
   async saveMessageWithId(messageId, content, role) {
     try {
-      await fetch(`${this.baseURL}/chat/messages/${messageId}`, {
+      const response = await fetch(`${this.baseURL}/chat/messages/${messageId}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: this.getAuthHeaders(),
         body: JSON.stringify({
           id: messageId,
           content: content,
@@ -119,9 +135,13 @@ export class ChatApiRepository extends ChatRepository {
           chatSessionId: this.currentSessionId || null
         })
       });
+
+      if (!response.ok && response.status !== 401) {
+        console.warn(`Erro ao salvar mensagem: ${response.status}`);
+      }
     } catch (error) {
       console.error('Erro ao salvar mensagem com ID:', error);
-      throw error;
+      // Don't throw - allow chat to continue even if save fails
     }
   }
 
@@ -131,7 +151,7 @@ export class ChatApiRepository extends ChatRepository {
    */
   async getMessageHistory() {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = this.getAuthToken();
       
       if (!token) {
         return []; // Retorna array vazio se não autenticado
@@ -139,9 +159,7 @@ export class ChatApiRepository extends ChatRepository {
 
       const response = await fetch(`${this.baseURL}/chat/messages/recent`, {
         method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: this.getAuthHeaders()
       });
 
       if (!response.ok) {
@@ -176,6 +194,26 @@ export class ChatApiRepository extends ChatRepository {
     } catch (error) {
       console.error('Erro ao carregar histórico do backend:', error);
       return []; // Retorna array vazio em caso de erro
+    }
+  }
+
+  /**
+   * Limpa o histórico de mensagens (cria uma nova sessão)
+   * @returns {Promise<void>}
+   */
+  async clearHistory() {
+    try {
+      // Clear current session ID to start fresh
+      this.currentSessionId = null;
+      
+      // Optionally, we could archive or delete the current session
+      // For now, just clearing the local reference is enough
+      // as a new session will be created on next message
+      
+      console.log('Histórico limpo - nova sessão será criada');
+    } catch (error) {
+      console.error('Erro ao limpar histórico:', error);
+      throw error;
     }
   }
 
