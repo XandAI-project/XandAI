@@ -262,7 +262,7 @@ const GenerateImageButton = ({ chatResponse, messageId, compact = false, onImage
         </Box>
       )}
 
-      {/* Generate image button - centered */
+      {/* Generate image button - centered */}
       <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1 }}>
         <Button
           variant="contained"
