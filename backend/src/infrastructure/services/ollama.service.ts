@@ -61,28 +61,49 @@ User message: "${firstUserMessage}"
 
 Title:`;
 
-      const response = await fetch(`${baseUrl}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: this.defaultModel,
-          prompt: prompt,
-          stream: false,
-          options: {
-            temperature: 0.7,
-            max_tokens: 50,
-          },
-        }),
-      });
+      // Try /api/chat first, fallback to /api/generate
+      let response: Response;
+      let data: any;
 
-      if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status}`);
+      try {
+        response = await fetch(`${baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: this.defaultModel,
+            messages: [{ role: 'user', content: prompt }],
+            stream: false,
+            options: { temperature: 0.7, num_predict: 50 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          throw new Error('Chat endpoint failed');
+        }
+      } catch {
+        // Fallback to /api/generate
+        response = await fetch(`${baseUrl}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: this.defaultModel,
+            prompt: prompt,
+            stream: false,
+            options: { temperature: 0.7, num_predict: 50 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ollama API error: ${response.status}`);
+        }
+        data = await response.json();
       }
 
-      const data = await response.json();
-      const generatedTitle = data.response?.trim();
+      const generatedTitle = data.message?.content?.trim() || data.response?.trim();
 
       if (!generatedTitle) {
         throw new Error('Empty response from Ollama');
@@ -195,46 +216,99 @@ Title:`;
       // Get effective URL (priority: options > dynamic > env)
       const baseUrl = this.getEffectiveBaseUrl(options.ollamaConfig?.baseUrl);
       const timeout = options.ollamaConfig?.timeout || this.dynamicTimeout || 300000;
+      const model = options.model || this.defaultModel;
       
-      this.logger.log(`Gerando resposta com modelo: ${options.model || this.defaultModel}`);
+      this.logger.log(`Gerando resposta com modelo: ${model}`);
       this.logger.log(`Usando Ollama URL: ${baseUrl}${options.ollamaConfig?.baseUrl ? ' (from frontend)' : this.dynamicBaseUrl ? ' (from dynamic config)' : ' (from env)'}`);
 
-      const requestBody = {
-        model: options.model || this.defaultModel,
-        prompt: prompt,
-        stream: false,
-        options: {
-          temperature: options.temperature || 0.7,
-          max_tokens: options.maxTokens || 2048,
-          top_p: 0.9,
-          top_k: 40,
-        },
-      };
+      // Try /api/chat first (for chat models like llama3.2), fallback to /api/generate
+      let response: Response;
+      let data: any;
+      let usedEndpoint: string;
 
-      const response = await fetch(`${baseUrl}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(timeout), // timeout dinâmico
-      });
+      // First try /api/chat (preferred for chat models)
+      try {
+        const chatRequestBody = {
+          model: model,
+          messages: [
+            { role: 'user', content: prompt }
+          ],
+          stream: false,
+          options: {
+            temperature: options.temperature || 0.7,
+            num_predict: options.maxTokens || 2048,
+            top_p: 0.9,
+            top_k: 40,
+          },
+        };
 
-      if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+        this.logger.log(`Tentando /api/chat...`);
+        response = await fetch(`${baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(chatRequestBody),
+          signal: AbortSignal.timeout(timeout),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+          usedEndpoint = '/api/chat';
+        } else {
+          throw new Error(`Chat endpoint failed: ${response.status}`);
+        }
+      } catch (chatError) {
+        // Fallback to /api/generate
+        this.logger.log(`/api/chat falhou, tentando /api/generate...`);
+        
+        const generateRequestBody = {
+          model: model,
+          prompt: prompt,
+          stream: false,
+          options: {
+            temperature: options.temperature || 0.7,
+            num_predict: options.maxTokens || 2048,
+            top_p: 0.9,
+            top_k: 40,
+          },
+        };
+
+        response = await fetch(`${baseUrl}/api/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(generateRequestBody),
+          signal: AbortSignal.timeout(timeout),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+        }
+
+        data = await response.json();
+        usedEndpoint = '/api/generate';
       }
 
-      const data = await response.json();
       const processingTime = Date.now() - startTime;
 
-      if (!data.response) {
+      // Extract content based on endpoint used
+      let content: string;
+      if (usedEndpoint === '/api/chat') {
+        content = data.message?.content || data.response || '';
+      } else {
+        content = data.response || '';
+      }
+
+      if (!content) {
         throw new Error('Empty response from Ollama API');
       }
 
-      this.logger.log(`Resposta gerada em ${processingTime}ms`);
+      this.logger.log(`Resposta gerada via ${usedEndpoint} em ${processingTime}ms`);
 
       // Remove prefixos indesejados da resposta
-      let cleanContent = data.response.trim();
+      let cleanContent = content.trim();
       
       // Remove prefixos comuns que o modelo pode adicionar
       const prefixesToRemove = [
@@ -252,8 +326,8 @@ Title:`;
 
       return {
         content: cleanContent,
-        model: requestBody.model,
-        tokens: data.eval_count || 0,
+        model: model,
+        tokens: data.eval_count || data.prompt_eval_count || 0,
         processingTime,
       };
 
@@ -338,29 +412,49 @@ User request: "${userMessage}"
 
 JSON:`;
 
-      const response = await fetch(`${baseUrl}/api/generate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model: this.defaultModel,
-          prompt: systemPrompt,
-          stream: false,
-          options: {
-            temperature: 0.7,
-            max_tokens: 500,
-          },
-        }),
-        signal: AbortSignal.timeout(30000),
-      });
+      // Try /api/chat first, fallback to /api/generate
+      let response: Response;
+      let data: any;
 
-      if (!response.ok) {
-        throw new Error(`Ollama API error: ${response.status}`);
+      try {
+        response = await fetch(`${baseUrl}/api/chat`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: this.defaultModel,
+            messages: [{ role: 'user', content: systemPrompt }],
+            stream: false,
+            options: { temperature: 0.7, num_predict: 500 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        });
+
+        if (response.ok) {
+          data = await response.json();
+        } else {
+          throw new Error('Chat endpoint failed');
+        }
+      } catch {
+        // Fallback to /api/generate
+        response = await fetch(`${baseUrl}/api/generate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            model: this.defaultModel,
+            prompt: systemPrompt,
+            stream: false,
+            options: { temperature: 0.7, num_predict: 500 },
+          }),
+          signal: AbortSignal.timeout(30000),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Ollama API error: ${response.status}`);
+        }
+        data = await response.json();
       }
 
-      const data = await response.json();
-      let responseText = data.response?.trim() || '';
+      let responseText = data.message?.content?.trim() || data.response?.trim() || '';
 
       // Try to parse JSON from response
       try {
