@@ -542,33 +542,38 @@ export class ChatUseCase {
   }
 
   /**
-   * Constrói o contexto da conversa incluindo histórico
+   * Builds conversation context including history
    */
   private buildConversationContext(messageHistory: ChatMessage[], currentMessage: string): string {
     let context = '';
     
-    // Se há histórico, inclui as mensagens anteriores
+    // If there's history, include previous messages (excluding current to avoid duplication)
     if (messageHistory.length > 0) {
-      // Ordena mensagens por data (mais antigas primeiro)
+      // Sort messages by date (oldest first)
       const sortedHistory = messageHistory.sort((a, b) => 
         new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
       );
       
-      // Inclui apenas as últimas 10 mensagens para não sobrecarregar o contexto
-      const recentMessages = sortedHistory.slice(-10);
+      // Filter out the current message if it's already in history (avoid duplication)
+      const filteredHistory = sortedHistory.filter(msg => 
+        !(msg.role === 'user' && msg.content === currentMessage)
+      );
       
-      // Monta o contexto em formato de conversa natural
+      // Include only the last 10 messages to avoid context overload
+      const recentMessages = filteredHistory.slice(-10);
+      
+      // Build context in natural conversation format
       recentMessages.forEach(msg => {
         if (msg.role === 'user') {
-          context += `Usuário: ${msg.content}\n\n`;
+          context += `User: ${msg.content}\n\n`;
         } else {
-          context += `Resposta: ${msg.content}\n\n`;
+          context += `Assistant: ${msg.content}\n\n`;
         }
       });
     }
     
-    // Adiciona a mensagem atual
-    context += `Usuário: ${currentMessage}\n\nPor favor, responda diretamente sem prefixos:`;
+    // Add the current message
+    context += `User: ${currentMessage}\n\nRespond directly without any prefixes:`;
     
     return context;
   }
