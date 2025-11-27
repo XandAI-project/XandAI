@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import {
   Typography,
@@ -18,16 +18,49 @@ import {
   List as ListIcon,
   FormatQuote as QuoteIcon
 } from '@mui/icons-material';
+import ThinkingBlock from './ThinkingBlock';
 
 /**
- * Componente para renderização de markdown com estilos Material-UI
- * @param {Object} props - Propriedades do componente
- * @param {string} props.content - Conteúdo markdown para renderizar
- * @param {boolean} props.isUserMessage - Se é uma mensagem do usuário
+ * Parses content to extract thinking blocks and regular content
+ * @param {string} content - Raw content that may contain <think> tags
+ * @returns {Object} - { thinkingBlocks: string[], mainContent: string }
+ */
+const parseThinkingContent = (content) => {
+  if (!content) return { thinkingBlocks: [], mainContent: '' };
+  
+  const thinkingBlocks = [];
+  let mainContent = content;
+  
+  // Match all <think>...</think> blocks (case insensitive, handles newlines)
+  const thinkRegex = /<think>([\s\S]*?)<\/think>/gi;
+  let match;
+  
+  while ((match = thinkRegex.exec(content)) !== null) {
+    thinkingBlocks.push(match[1].trim());
+  }
+  
+  // Remove thinking blocks from main content
+  mainContent = content.replace(thinkRegex, '').trim();
+  
+  return { thinkingBlocks, mainContent };
+};
+
+/**
+ * Component for rendering markdown with Material-UI styles
+ * Supports <think> tags for AI reasoning display
+ * @param {Object} props - Component properties
+ * @param {string} props.content - Markdown content to render
+ * @param {boolean} props.isUserMessage - Whether this is a user message
  * @returns {JSX.Element}
  */
 const MarkdownRenderer = ({ content, isUserMessage = false }) => {
   const theme = useTheme();
+  
+  // Parse thinking blocks from content
+  const { thinkingBlocks, mainContent } = useMemo(
+    () => parseThinkingContent(content),
+    [content]
+  );
 
   // Detecta se o tema é escuro - verifica tanto o modo quanto a cor de fundo
   const isDarkMode = theme.palette.mode === 'dark' || 
@@ -482,11 +515,27 @@ const MarkdownRenderer = ({ content, isUserMessage = false }) => {
 
   return (
     <Box sx={{ '& > *:first-of-type': { mt: 0 }, '& > *:last-child': { mb: 0 } }}>
-      <ReactMarkdown
-        components={components}
-      >
-        {content}
-      </ReactMarkdown>
+      {/* Render thinking blocks first (only for assistant messages) */}
+      {!isUserMessage && thinkingBlocks.length > 0 && (
+        <>
+          {thinkingBlocks.map((thinking, index) => (
+            <ThinkingBlock 
+              key={index} 
+              content={thinking} 
+              defaultExpanded={false}
+            />
+          ))}
+        </>
+      )}
+      
+      {/* Render main content */}
+      {mainContent && (
+        <ReactMarkdown
+          components={components}
+        >
+          {mainContent}
+        </ReactMarkdown>
+      )}
     </Box>
   );
 };
