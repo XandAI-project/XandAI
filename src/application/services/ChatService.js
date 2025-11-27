@@ -98,9 +98,15 @@ export class ChatService {
       
       // Add attachments if present (e.g., generated images)
       if (attachments && attachments.length > 0) {
-        assistantMessage.attachments = attachments;
-        console.log('🎨 Added attachments to message:', assistantMessage.attachments);
+        assistantMessage.attachments = [...attachments]; // Create new array
+        console.log('🎨 ChatService: Added attachments to message:', JSON.stringify(assistantMessage.attachments));
       }
+      
+      console.log('🚀 ChatService: Returning assistantMessage:', {
+        content: assistantMessage.content?.substring(0, 50),
+        attachments: assistantMessage.attachments,
+        hasAttachments: assistantMessage.attachments?.length > 0
+      });
 
       return {
         assistantMessage

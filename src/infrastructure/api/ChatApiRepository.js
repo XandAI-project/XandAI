@@ -48,7 +48,7 @@ export class ChatApiRepository extends ChatRepository {
         throw new Error('Token de autenticação não encontrado');
       }
 
-      // Get Ollama config for model selection
+      // Get Ollama config for model selection (don't send baseUrl - let backend use its env config)
       const ollamaConfig = JSON.parse(localStorage.getItem('xandai_ollama_config') || '{}');
 
       const response = await fetch(`${this.baseURL}/chat/messages`, {
@@ -60,9 +60,9 @@ export class ChatApiRepository extends ChatRepository {
           model: ollamaConfig.selectedModel || 'llama3.2',
           temperature: 0.7,
           metadata: {
+            // Don't send baseUrl - backend uses OLLAMA_BASE_URL env var
             ollamaConfig: {
-              baseUrl: ollamaConfig.baseUrl,
-              enabled: ollamaConfig.enabled
+              enabled: ollamaConfig.enabled !== false
             }
           }
         })

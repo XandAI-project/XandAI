@@ -169,29 +169,39 @@ export const useChat = () => {
 
       // Send the original message to backend - backend handles context building
       const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
+      
+      console.log('📩 Backend response received:', response);
+      console.log('📎 Attachments in response:', response.assistantMessage?.attachments);
 
       // Update final assistant message with response (including attachments)
-      // Keep the original streaming message ID but update content and attachments
-      setMessages(prev => 
-        prev.map(msg => {
+      // Use plain object spread for better React state detection
+      setMessages(prev => {
+        const newMessages = prev.map(msg => {
           if (msg.id === assistantMessageId) {
-            // Create a new object to trigger React re-render
-            const updatedMessage = Message.createAssistantMessage(response.assistantMessage.content);
-            updatedMessage.id = assistantMessageId; // Keep original ID
-            updatedMessage.isStreaming = false;
-            updatedMessage.timestamp = response.assistantMessage.timestamp || new Date();
+            // Create a completely new plain object for React to detect change
+            const attachments = response.assistantMessage?.attachments || [];
+            console.log('🎨 Setting attachments on message:', attachments);
             
-            // Copy attachments if present
-            if (response.assistantMessage.attachments && response.assistantMessage.attachments.length > 0) {
-              updatedMessage.attachments = [...response.assistantMessage.attachments];
-              console.log('🎨 Updated message with attachments:', updatedMessage.attachments);
-            }
-            
-            return updatedMessage;
+            return {
+              id: assistantMessageId,
+              content: response.assistantMessage?.content || '',
+              sender: 'assistant',
+              timestamp: response.assistantMessage?.timestamp || new Date(),
+              isTyping: false,
+              isStreaming: false,
+              attachments: attachments.length > 0 ? [...attachments] : [],
+              // Preserve Message class methods for compatibility
+              isFromUser: () => false,
+              isFromAssistant: () => true,
+              hasAttachments: () => attachments.length > 0,
+              getFormattedTime: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+            };
           }
           return msg;
-        })
-      );
+        });
+        console.log('📝 Updated messages state:', newMessages);
+        return newMessages;
+      });
       
       // Note: Backend /chat/messages endpoint already saves both user and assistant messages
       // No need to save again here
