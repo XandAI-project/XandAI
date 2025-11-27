@@ -60,6 +60,8 @@ services:
   # Override backend to enable SD and connect to Forge
   backend:
     environment:
+      # Ollama runs on host machine - MUST use host.docker.internal
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
       # Enable Stable Diffusion auto-configuration
       SD_ENABLED: "true"
       SD_BASE_URL: http://forge:17860
