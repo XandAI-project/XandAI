@@ -141,18 +141,9 @@ export const useChat = () => {
     setError(null);
 
     try {
-      // Adiciona a mensagem do usuário imediatamente
+      // Adiciona a mensagem do usuário imediatamente (UI only - backend will save it)
       const userMessage = Message.createUserMessage(messageContent);
       setMessages(prev => [...prev, userMessage]);
-
-      // Salva a mensagem do usuário no backend
-      if (isBackendConnected && chatService?.chatRepository?.saveMessageWithId) {
-        try {
-          await chatService.chatRepository.saveMessageWithId(userMessage.id, userMessage.content, 'user');
-        } catch (error) {
-          console.warn('Erro ao salvar mensagem do usuário no backend:', error);
-        }
-      }
 
       // Cria mensagem de resposta vazia para streaming
       const assistantMessageId = generateUUID();
@@ -162,12 +153,11 @@ export const useChat = () => {
       
       setMessages(prev => [...prev, streamingMessage]);
 
-      // Callback para streaming de tokens
+      // Callback para streaming de tokens (for future streaming support)
       const onToken = (token, fullText, isDone) => {
         setMessages(prev => 
           prev.map(msg => {
             if (msg.id === assistantMessageId) {
-              // Mantém a instância da classe Message, mas atualiza propriedades
               msg.content = fullText;
               msg.isStreaming = !isDone;
               return msg;
@@ -177,38 +167,10 @@ export const useChat = () => {
         );
       };
 
-      // Se há uma sessão ativa, busca o histórico para contexto
-      let contextualMessage = messageContent;
-      if (currentSessionId) {
-        try {
-          const chatHistoryService = await import('../../services/ChatHistoryService.js');
-          const sessionMessages = await chatHistoryService.default.getSessionMessages(currentSessionId);
-          
-          // Monta contexto com as últimas 10 mensagens
-          if (sessionMessages && sessionMessages.length > 0) {
-            const recentMessages = sessionMessages.slice(-10);
-            let context = '';
-            
-            recentMessages.forEach(msg => {
-              if (msg.role === 'user') {
-                context += `Usuário: ${msg.content}\n\n`;
-              } else {
-                context += `Resposta: ${msg.content}\n\n`;
-              }
-            });
-            
-            contextualMessage = `${context}Usuário: ${messageContent}\n\nPor favor, responda diretamente sem prefixos:`;
-          }
-        } catch (contextError) {
-          console.warn('Error fetching context, using simple message:', contextError);
-          // Continue with simple message if can't fetch context
-        }
-      }
+      // Send the original message to backend - backend handles context building
+      const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
 
-      // ALWAYS use frontend streaming for better UX, but with context if available
-      const response = await chatService.sendMessageWithoutUserSave(contextualMessage, onToken);
-
-      // Update final assistant message
+      // Update final assistant message with response (including attachments)
       setMessages(prev => 
         prev.map(msg => 
           msg.id === assistantMessageId 
@@ -216,36 +178,9 @@ export const useChat = () => {
             : msg
         )
       );
-
-      // Save assistant message to backend
-      if (isBackendConnected && chatService?.chatRepository?.saveMessageWithId) {
-        try {
-          await chatService.chatRepository.saveMessageWithId(
-            assistantMessageId, 
-            response.assistantMessage.content, 
-            'assistant'
-          );
-        } catch (error) {
-          console.warn('Error saving assistant message to backend:', error);
-        }
-      }
-
-      // If there's an active session, save to backend AFTER streaming
-      if (currentSessionId) {
-        try {
-          const chatHistoryService = await import('../../services/ChatHistoryService.js');
-          
-          // Save user message
-          await chatHistoryService.default.sendMessage(currentSessionId, messageContent, 'user');
-          
-          // Save assistant response
-          await chatHistoryService.default.sendMessage(currentSessionId, response.assistantMessage.content, 'assistant');
-
-        } catch (backendError) {
-          console.error('Error saving messages to backend:', backendError);
-          // Don't interrupt flow - streaming already worked
-        }
-      }
+      
+      // Note: Backend /chat/messages endpoint already saves both user and assistant messages
+      // No need to save again here
 
     } catch (err) {
       console.error('Error sending message:', err);
