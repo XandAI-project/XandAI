@@ -171,12 +171,26 @@ export const useChat = () => {
       const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
 
       // Update final assistant message with response (including attachments)
+      // Keep the original streaming message ID but update content and attachments
       setMessages(prev => 
-        prev.map(msg => 
-          msg.id === assistantMessageId 
-            ? response.assistantMessage
-            : msg
-        )
+        prev.map(msg => {
+          if (msg.id === assistantMessageId) {
+            // Create a new object to trigger React re-render
+            const updatedMessage = Message.createAssistantMessage(response.assistantMessage.content);
+            updatedMessage.id = assistantMessageId; // Keep original ID
+            updatedMessage.isStreaming = false;
+            updatedMessage.timestamp = response.assistantMessage.timestamp || new Date();
+            
+            // Copy attachments if present
+            if (response.assistantMessage.attachments && response.assistantMessage.attachments.length > 0) {
+              updatedMessage.attachments = [...response.assistantMessage.attachments];
+              console.log('🎨 Updated message with attachments:', updatedMessage.attachments);
+            }
+            
+            return updatedMessage;
+          }
+          return msg;
+        })
       );
       
       // Note: Backend /chat/messages endpoint already saves both user and assistant messages
