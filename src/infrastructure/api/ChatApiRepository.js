@@ -48,8 +48,12 @@ export class ChatApiRepository extends ChatRepository {
         throw new Error('Token de autenticação não encontrado');
       }
 
-      // Get Ollama config - if user configured a URL on frontend, it overrides backend env var
-      const ollamaConfig = JSON.parse(localStorage.getItem('xandai_ollama_config') || '{}');
+      // Get Ollama config - NOTE: uses same key as OllamaApiRepository ('ollama-config')
+      const ollamaConfig = JSON.parse(localStorage.getItem('ollama-config') || '{}');
+      
+      // Log for debugging
+      console.log('🤖 Ollama config from localStorage:', ollamaConfig);
+      console.log('🤖 Selected model:', ollamaConfig.selectedModel || 'NOT SET - using default llama3.2');
       
       // Build ollamaConfig to send to backend
       const ollamaConfigForBackend = {
@@ -67,13 +71,17 @@ export class ChatApiRepository extends ChatRepository {
         ollamaConfigForBackend.timeout = ollamaConfig.timeout;
       }
 
+      // Use model from config or fallback to default
+      const modelToUse = ollamaConfig.selectedModel || 'llama3.2';
+      console.log('🚀 Sending message with model:', modelToUse);
+
       const response = await fetch(`${this.baseURL}/chat/messages`, {
         method: 'POST',
         headers: this.getAuthHeaders(),
         body: JSON.stringify({
           content: message,
           sessionId: this.currentSessionId || null,
-          model: ollamaConfig.selectedModel || 'llama3.2',
+          model: modelToUse,
           temperature: 0.7,
           metadata: {
             ollamaConfig: ollamaConfigForBackend
