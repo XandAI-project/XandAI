@@ -145,42 +145,63 @@ export const useChat = () => {
       const userMessage = Message.createUserMessage(messageContent);
       setMessages(prev => [...prev, userMessage]);
 
-      // Cria mensagem de resposta vazia para mostrar loading
+      // Cria mensagem de resposta vazia para streaming
       const assistantMessageId = generateUUID();
-      const loadingMessage = Message.createAssistantMessage('...');
-      loadingMessage.id = assistantMessageId;
-      loadingMessage.isStreaming = true;
+      const streamingMessage = Message.createAssistantMessage('');
+      streamingMessage.id = assistantMessageId;
+      streamingMessage.isStreaming = true;
       
-      setMessages(prev => [...prev, loadingMessage]);
+      setMessages(prev => [...prev, streamingMessage]);
 
-      // Send the message to backend
-      console.log('🚀 Sending message to backend...');
-      const response = await chatService.sendMessageWithoutUserSave(messageContent, null);
+      // Callback para streaming de tokens
+      const onToken = (token, fullText, isDone) => {
+        setMessages(prev => {
+          const newMessages = prev.map(msg => {
+            if (msg.id === assistantMessageId) {
+              // Create new object to trigger React re-render
+              return {
+                ...msg,
+                id: assistantMessageId,
+                content: fullText,
+                sender: 'assistant',
+                isStreaming: !isDone,
+                isTyping: false,
+                timestamp: msg.timestamp || new Date(),
+                isFromUser: () => false,
+                isFromAssistant: () => true,
+                hasAttachments: () => false,
+                getFormattedTime: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+              };
+            }
+            return msg;
+          });
+          return [...newMessages];
+        });
+      };
+
+      // Send message with streaming callback
+      console.log('🌊 Sending message with streaming...');
+      const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
       
-      console.log('📩 Backend response received:', response);
+      console.log('📩 Streaming completed:', response);
       const assistantContent = response.assistantMessage?.content || '';
       const attachments = response.assistantMessage?.attachments || [];
-      console.log('📝 Assistant content:', assistantContent.substring(0, 100));
-      console.log('📎 Attachments:', attachments);
 
-      // Create a new Message object with the response content
+      // Final update to ensure message is complete
       const finalMessage = new Message(
         assistantMessageId,
         assistantContent,
         'assistant',
         new Date(),
-        false, // isTyping
-        false  // isStreaming
+        false,
+        false
       );
       
-      // Add attachments if present
       if (attachments.length > 0) {
         finalMessage.attachments = [...attachments];
         console.log('🎨 Added attachments to message');
       }
 
-      // Replace the loading message with the final response
-      // Use functional update with completely new array for React to detect change
       setMessages(prev => {
         const newMessages = prev.map(msg => {
           if (msg.id === assistantMessageId) {
@@ -188,8 +209,7 @@ export const useChat = () => {
           }
           return msg;
         });
-        console.log('✅ Messages updated, total:', newMessages.length);
-        return [...newMessages]; // Force new array reference
+        return [...newMessages];
       });
 
     } catch (err) {

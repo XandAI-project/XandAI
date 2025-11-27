@@ -218,6 +218,60 @@ export class ChatUseCase {
   }
 
   /**
+   * Envia uma mensagem com streaming
+   */
+  async sendMessageWithStreaming(
+    userId: string,
+    sendMessageDto: SendMessageDto,
+    onToken: (token: string, fullText: string) => void
+  ): Promise<void> {
+    let session: ChatSession;
+
+    // Se não foi fornecido sessionId, cria uma nova sessão
+    if (!sendMessageDto.sessionId) {
+      const newSessionData: Partial<ChatSession> = {
+        userId,
+        title: this.generateSessionTitle(sendMessageDto.content),
+        status: 'active',
+        lastActivityAt: new Date(),
+      };
+      session = await this.chatSessionRepository.create(newSessionData);
+    } else {
+      session = await this.chatSessionRepository.findById(sendMessageDto.sessionId);
+      if (!session || session.userId !== userId) {
+        throw new ForbiddenException('Acesso negado à sessão');
+      }
+    }
+
+    // Salva mensagem do usuário
+    const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
+    await this.chatMessageRepository.create(userMessageData);
+
+    // Busca histórico para contexto
+    const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
+    const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content);
+
+    // Gera resposta com streaming
+    const aiResponse = await this.ollamaService.generateResponseWithStreaming(
+      context,
+      {
+        model: sendMessageDto.model,
+        temperature: sendMessageDto.temperature,
+        ollamaConfig: sendMessageDto.metadata?.ollamaConfig,
+      },
+      onToken
+    );
+
+    // Salva resposta do assistente
+    const assistantMessageData = ChatMessage.createAssistantMessage(
+      aiResponse.content,
+      session.id,
+      { model: aiResponse.model, tokens: aiResponse.tokens }
+    );
+    await this.chatMessageRepository.create(assistantMessageData);
+  }
+
+  /**
    * Obtém mensagens de uma sessão
    */
   async getSessionMessages(

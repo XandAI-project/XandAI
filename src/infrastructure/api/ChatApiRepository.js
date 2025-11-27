@@ -75,26 +75,30 @@ export class ChatApiRepository extends ChatRepository {
       const modelToUse = ollamaConfig.selectedModel || 'llama3.2';
       console.log('🚀 Sending message with model:', modelToUse);
 
-      const response = await fetch(`${this.baseURL}/chat/messages`, {
-        method: 'POST',
-        headers: this.getAuthHeaders(),
-        body: JSON.stringify({
-          content: message,
-          sessionId: this.currentSessionId || null,
-          model: modelToUse,
-          temperature: 0.7,
-          metadata: {
-            ollamaConfig: ollamaConfigForBackend
-          }
-        })
-      });
+      const requestBody = {
+        content: message,
+        sessionId: this.currentSessionId || null,
+        model: modelToUse,
+        temperature: 0.7,
+        metadata: {
+          ollamaConfig: ollamaConfigForBackend
+        }
+      };
 
-      if (!response.ok) {
-        throw new Error(`Erro na requisição: ${response.status}`);
-      }
-
+      // Use streaming endpoint if callback provided
       if (onToken) {
-        // Handle streaming response
+        console.log('🌊 Using streaming endpoint...');
+        const response = await fetch(`${this.baseURL}/chat/messages/stream`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro na requisição: ${response.status}`);
+        }
+
+        // Handle SSE streaming response
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullResponse = '';
@@ -103,21 +107,28 @@ export class ChatApiRepository extends ChatRepository {
           const { done, value } = await reader.read();
           if (done) break;
 
-          const chunk = decoder.decode(value);
+          const chunk = decoder.decode(value, { stream: true });
           const lines = chunk.split('\n');
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.slice(6));
+                if (data.error) {
+                  throw new Error(data.error);
+                }
                 if (data.token) {
-                  fullResponse += data.token;
+                  fullResponse = data.fullText || (fullResponse + data.token);
                   onToken(data.token, fullResponse, false);
-                } else if (data.done) {
+                }
+                if (data.done) {
                   onToken('', fullResponse, true);
                 }
               } catch (e) {
-                // Ignore parsing errors
+                if (e.message && !e.message.includes('JSON')) {
+                  throw e;
+                }
+                // Ignore JSON parsing errors
               }
             }
           }
@@ -125,6 +136,17 @@ export class ChatApiRepository extends ChatRepository {
 
         return fullResponse;
       } else {
+        // Non-streaming: use regular endpoint
+        const response = await fetch(`${this.baseURL}/chat/messages`, {
+          method: 'POST',
+          headers: this.getAuthHeaders(),
+          body: JSON.stringify(requestBody)
+        });
+
+        if (!response.ok) {
+          throw new Error(`Erro na requisição: ${response.status}`);
+        }
+
         const result = await response.json();
         console.log('Backend response:', result);
         
@@ -140,7 +162,6 @@ export class ChatApiRepository extends ChatRepository {
         // If there are attachments (like generated images), return an object
         if (attachments && attachments.length > 0) {
           console.log('🎨 Received image attachments:', attachments);
-          // Return object with content and attachments
           return {
             content: assistantContent,
             attachments: attachments

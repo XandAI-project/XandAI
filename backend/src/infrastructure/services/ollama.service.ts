@@ -179,6 +179,118 @@ Title:`;
   }
 
   /**
+   * Gera uma resposta com streaming usando o Ollama API
+   * @param prompt - Prompt completo incluindo contexto
+   * @param options - Opções para a geração
+   * @param onToken - Callback chamado para cada token recebido
+   * @returns Promise com a resposta completa
+   */
+  async generateResponseWithStreaming(
+    prompt: string,
+    options: {
+      model?: string;
+      temperature?: number;
+      maxTokens?: number;
+      ollamaConfig?: {
+        baseUrl?: string;
+        timeout?: number;
+        enabled?: boolean;
+      };
+    } = {},
+    onToken: (token: string, fullText: string) => void
+  ): Promise<{ content: string; model: string; tokens: number; processingTime: number }> {
+    const startTime = Date.now();
+    
+    try {
+      if (options.ollamaConfig?.baseUrl) {
+        this.setDynamicConfig({
+          baseUrl: options.ollamaConfig.baseUrl,
+          timeout: options.ollamaConfig.timeout
+        });
+      }
+      
+      const baseUrl = this.getEffectiveBaseUrl(options.ollamaConfig?.baseUrl);
+      const timeout = options.ollamaConfig?.timeout || this.dynamicTimeout || 300000;
+      const model = options.model || this.defaultModel;
+      
+      this.logger.log(`🌊 ========== OLLAMA STREAMING REQUEST ==========`);
+      this.logger.log(`🤖 Model: ${model}`);
+      this.logger.log(`🔗 URL: ${baseUrl}`);
+      this.logger.log(`===============================================`);
+
+      const chatRequestBody = {
+        model: model,
+        messages: [{ role: 'user', content: prompt }],
+        stream: true, // Enable streaming
+        options: {
+          temperature: options.temperature || 0.7,
+          num_predict: options.maxTokens || 2048,
+        },
+      };
+
+      const response = await fetch(`${baseUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(chatRequestBody),
+        signal: AbortSignal.timeout(timeout),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Ollama API error: ${response.status} ${response.statusText}`);
+      }
+
+      // Process streaming response
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body reader available');
+      }
+
+      const decoder = new TextDecoder();
+      let fullContent = '';
+      let totalTokens = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n').filter(line => line.trim());
+
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            if (data.message?.content) {
+              fullContent += data.message.content;
+              totalTokens++;
+              onToken(data.message.content, fullContent);
+            }
+            if (data.done) {
+              totalTokens = data.eval_count || totalTokens;
+            }
+          } catch {
+            // Skip invalid JSON lines
+          }
+        }
+      }
+
+      const processingTime = Date.now() - startTime;
+      this.logger.log(`✅ Streaming completed in ${processingTime}ms, ${totalTokens} tokens`);
+
+      return {
+        content: fullContent,
+        model: model,
+        tokens: totalTokens,
+        processingTime,
+      };
+
+    } catch (error) {
+      const processingTime = Date.now() - startTime;
+      this.logger.error(`Streaming error: ${error.message} (${processingTime}ms)`);
+      throw error;
+    }
+  }
+
+  /**
    * Gera uma resposta usando o Ollama API
    * @param prompt - Prompt completo incluindo contexto
    * @param options - Opções para a geração

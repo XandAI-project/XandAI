@@ -15,7 +15,9 @@ import {
   ParseUUIDPipe,
   ParseIntPipe,
   DefaultValuePipe,
+  Res,
 } from '@nestjs/common';
+import { Response } from 'express';
 
 import { ChatUseCase } from '../../application/use-cases/chat.use-case';
 import {
@@ -118,6 +120,41 @@ export class ChatController {
     @Body(ValidationPipe) sendMessageDto: SendMessageDto,
   ): Promise<SendMessageResponseDto> {
     return await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
+  }
+
+  /**
+   * Envia uma mensagem com streaming SSE
+   */
+  @Post('messages/stream')
+  async sendMessageStream(
+    @Request() req,
+    @Body(ValidationPipe) sendMessageDto: SendMessageDto,
+    @Res() res: Response,
+  ): Promise<void> {
+    // Set SSE headers
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no'); // Disable nginx buffering
+    res.flushHeaders();
+
+    try {
+      // Stream the response
+      await this.chatUseCase.sendMessageWithStreaming(
+        req.user.id,
+        sendMessageDto,
+        (token: string, fullText: string) => {
+          res.write(`data: ${JSON.stringify({ token, fullText, done: false })}\n\n`);
+        }
+      );
+
+      // Send completion message
+      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      res.end();
+    } catch (error) {
+      res.write(`data: ${JSON.stringify({ error: error.message, done: true })}\n\n`);
+      res.end();
+    }
   }
 
   /**
@@ -247,16 +284,4 @@ export class ChatController {
     );
   }
 
-  /**
-   * Endpoint para streaming de mensagens (WebSocket alternativo)
-   * TODO: Implementar streaming real com WebSockets ou SSE
-   */
-  @Post('messages/stream')
-  @HttpCode(HttpStatus.CREATED)
-  async sendMessageStream(
-    @Request() req,
-    @Body(ValidationPipe) sendMessageDto: SendMessageDto,
-  ): Promise<SendMessageResponseDto> {
-    return await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
-  }
 }
