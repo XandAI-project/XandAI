@@ -52,8 +52,9 @@ export class OllamaService {
     const baseUrl = this.getEffectiveBaseUrl();
     
     try {
-      this.logger.log(`Gerando título para mensagem: ${firstUserMessage.substring(0, 50)}...`);
-      this.logger.log(`Usando Ollama URL para título: ${baseUrl}`);
+      this.logger.log(`📝 Generating title for message: "${firstUserMessage.substring(0, 50)}..."`);
+      this.logger.log(`📝 Using model: ${this.defaultModel}`);
+      this.logger.log(`📝 Ollama URL: ${baseUrl}`);
 
       const prompt = `Based on this user message, generate a short, descriptive title (maximum 4-5 words) for a conversation. Respond only with the title, no quotes, no explanation:
 
@@ -218,8 +219,14 @@ Title:`;
       const timeout = options.ollamaConfig?.timeout || this.dynamicTimeout || 300000;
       const model = options.model || this.defaultModel;
       
-      this.logger.log(`Gerando resposta com modelo: ${model}`);
-      this.logger.log(`Usando Ollama URL: ${baseUrl}${options.ollamaConfig?.baseUrl ? ' (from frontend)' : this.dynamicBaseUrl ? ' (from dynamic config)' : ' (from env)'}`);
+      this.logger.log(`🤖 ========== OLLAMA REQUEST ==========`);
+      this.logger.log(`🤖 Model requested: ${options.model || '(not specified)'}`);
+      this.logger.log(`🤖 Default model: ${this.defaultModel}`);
+      this.logger.log(`🤖 Model being used: ${model}`);
+      this.logger.log(`🔗 Ollama URL: ${baseUrl}${options.ollamaConfig?.baseUrl ? ' (from frontend)' : this.dynamicBaseUrl ? ' (from dynamic config)' : ' (from env)'}`);
+      this.logger.log(`⏱️ Timeout: ${timeout}ms`);
+      this.logger.log(`🌡️ Temperature: ${options.temperature || 0.7}`);
+      this.logger.log(`======================================`);
 
       // Try /api/chat first (for chat models like llama3.2), fallback to /api/generate
       let response: Response;
@@ -242,7 +249,7 @@ Title:`;
           },
         };
 
-        this.logger.log(`Tentando /api/chat...`);
+        this.logger.log(`🔄 Trying /api/chat with model: ${model}...`);
         response = await fetch(`${baseUrl}/api/chat`, {
           method: 'POST',
           headers: {
@@ -260,7 +267,7 @@ Title:`;
         }
       } catch (chatError) {
         // Fallback to /api/generate
-        this.logger.log(`/api/chat falhou, tentando /api/generate...`);
+        this.logger.log(`⚠️ /api/chat failed, falling back to /api/generate with model: ${model}...`);
         
         const generateRequestBody = {
           model: model,
@@ -305,7 +312,7 @@ Title:`;
         throw new Error('Empty response from Ollama API');
       }
 
-      this.logger.log(`Resposta gerada via ${usedEndpoint} em ${processingTime}ms`);
+      this.logger.log(`✅ Response generated via ${usedEndpoint} in ${processingTime}ms using model: ${model}`);
 
       // Remove prefixos indesejados da resposta
       let cleanContent = content.trim();
@@ -388,8 +395,9 @@ Title:`;
     const baseUrl = this.getEffectiveBaseUrl();
     
     try {
-      this.logger.log(`Generating SD prompt for: "${userMessage.substring(0, 50)}..."`);
-      this.logger.log(`Usando Ollama URL para prompt SD: ${baseUrl}`);
+      this.logger.log(`🎨 Generating SD prompt for: "${userMessage.substring(0, 50)}..."`);
+      this.logger.log(`🎨 Using model: ${this.defaultModel}`);
+      this.logger.log(`🎨 Ollama URL: ${baseUrl}`);
 
       const systemPrompt = `You are an expert prompt engineer for Stable Diffusion image generation. 
 Your task is to convert user requests into highly detailed, optimized prompts for SDXL.
