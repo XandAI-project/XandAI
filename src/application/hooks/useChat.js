@@ -145,66 +145,52 @@ export const useChat = () => {
       const userMessage = Message.createUserMessage(messageContent);
       setMessages(prev => [...prev, userMessage]);
 
-      // Cria mensagem de resposta vazia para streaming
+      // Cria mensagem de resposta vazia para mostrar loading
       const assistantMessageId = generateUUID();
-      const streamingMessage = Message.createAssistantMessage('');
-      streamingMessage.id = assistantMessageId;
-      streamingMessage.isStreaming = true;
+      const loadingMessage = Message.createAssistantMessage('...');
+      loadingMessage.id = assistantMessageId;
+      loadingMessage.isStreaming = true;
       
-      setMessages(prev => [...prev, streamingMessage]);
+      setMessages(prev => [...prev, loadingMessage]);
 
-      // Callback para streaming de tokens (for future streaming support)
-      const onToken = (token, fullText, isDone) => {
-        setMessages(prev => 
-          prev.map(msg => {
-            if (msg.id === assistantMessageId) {
-              msg.content = fullText;
-              msg.isStreaming = !isDone;
-              return msg;
-            }
-            return msg;
-          })
-        );
-      };
-
-      // Send the original message to backend - backend handles context building
-      const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
+      // Send the message to backend
+      console.log('🚀 Sending message to backend...');
+      const response = await chatService.sendMessageWithoutUserSave(messageContent, null);
       
       console.log('📩 Backend response received:', response);
-      console.log('📎 Attachments in response:', response.assistantMessage?.attachments);
+      const assistantContent = response.assistantMessage?.content || '';
+      const attachments = response.assistantMessage?.attachments || [];
+      console.log('📝 Assistant content:', assistantContent.substring(0, 100));
+      console.log('📎 Attachments:', attachments);
 
-      // Update final assistant message with response (including attachments)
-      // Use plain object spread for better React state detection
+      // Create a new Message object with the response content
+      const finalMessage = new Message(
+        assistantMessageId,
+        assistantContent,
+        'assistant',
+        new Date(),
+        false, // isTyping
+        false  // isStreaming
+      );
+      
+      // Add attachments if present
+      if (attachments.length > 0) {
+        finalMessage.attachments = [...attachments];
+        console.log('🎨 Added attachments to message');
+      }
+
+      // Replace the loading message with the final response
+      // Use functional update with completely new array for React to detect change
       setMessages(prev => {
         const newMessages = prev.map(msg => {
           if (msg.id === assistantMessageId) {
-            // Create a completely new plain object for React to detect change
-            const attachments = response.assistantMessage?.attachments || [];
-            console.log('🎨 Setting attachments on message:', attachments);
-            
-            return {
-              id: assistantMessageId,
-              content: response.assistantMessage?.content || '',
-              sender: 'assistant',
-              timestamp: response.assistantMessage?.timestamp || new Date(),
-              isTyping: false,
-              isStreaming: false,
-              attachments: attachments.length > 0 ? [...attachments] : [],
-              // Preserve Message class methods for compatibility
-              isFromUser: () => false,
-              isFromAssistant: () => true,
-              hasAttachments: () => attachments.length > 0,
-              getFormattedTime: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-            };
+            return finalMessage;
           }
           return msg;
         });
-        console.log('📝 Updated messages state:', newMessages);
-        return newMessages;
+        console.log('✅ Messages updated, total:', newMessages.length);
+        return [...newMessages]; // Force new array reference
       });
-      
-      // Note: Backend /chat/messages endpoint already saves both user and assistant messages
-      // No need to save again here
 
     } catch (err) {
       console.error('Error sending message:', err);
