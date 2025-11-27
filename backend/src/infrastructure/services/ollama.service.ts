@@ -3,16 +3,44 @@ import { ConfigService } from '@nestjs/config';
 
 /**
  * Serviço para integração com Ollama API
+ * Supports dynamic baseUrl override from frontend configuration
  */
 @Injectable()
 export class OllamaService {
   private readonly logger = new Logger(OllamaService.name);
   private readonly ollamaBaseUrl: string;
   private readonly defaultModel: string;
+  
+  // Store dynamic config for use across methods
+  private dynamicBaseUrl: string | null = null;
+  private dynamicTimeout: number | null = null;
 
   constructor(private readonly configService: ConfigService) {
     this.ollamaBaseUrl = this.configService.get<string>('OLLAMA_BASE_URL', 'http://localhost:11434');
     this.defaultModel = this.configService.get<string>('OLLAMA_DEFAULT_MODEL', 'llama2');
+  }
+
+  /**
+   * Sets dynamic configuration from frontend (overrides env vars)
+   * @param config - Frontend configuration
+   */
+  setDynamicConfig(config: { baseUrl?: string; timeout?: number }) {
+    if (config.baseUrl) {
+      this.dynamicBaseUrl = config.baseUrl;
+      this.logger.log(`🔗 Dynamic Ollama URL set from frontend: ${config.baseUrl}`);
+    }
+    if (config.timeout) {
+      this.dynamicTimeout = config.timeout;
+    }
+  }
+
+  /**
+   * Gets the effective base URL (frontend config takes priority)
+   */
+  private getEffectiveBaseUrl(overrideUrl?: string): string {
+    // Priority: 1. Method parameter, 2. Dynamic config from frontend, 3. Env var
+    const effectiveUrl = overrideUrl || this.dynamicBaseUrl || this.ollamaBaseUrl;
+    return effectiveUrl;
   }
 
   /**
@@ -21,8 +49,11 @@ export class OllamaService {
    * @returns Promise com o título gerado
    */
   async generateConversationTitle(firstUserMessage: string): Promise<string> {
+    const baseUrl = this.getEffectiveBaseUrl();
+    
     try {
       this.logger.log(`Gerando título para mensagem: ${firstUserMessage.substring(0, 50)}...`);
+      this.logger.log(`Usando Ollama URL para título: ${baseUrl}`);
 
       const prompt = `Based on this user message, generate a short, descriptive title (maximum 4-5 words) for a conversation. Respond only with the title, no quotes, no explanation:
 
@@ -30,7 +61,7 @@ User message: "${firstUserMessage}"
 
 Title:`;
 
-      const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+      const response = await fetch(`${baseUrl}/api/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -153,12 +184,20 @@ Title:`;
     const startTime = Date.now();
     
     try {
-      // Usa configuração dinâmica se fornecida, senão usa a configuração padrão
-      const baseUrl = options.ollamaConfig?.baseUrl || this.ollamaBaseUrl;
-      const timeout = options.ollamaConfig?.timeout || 300000;
+      // If frontend sent a config, store it for other methods (like title generation)
+      if (options.ollamaConfig?.baseUrl) {
+        this.setDynamicConfig({
+          baseUrl: options.ollamaConfig.baseUrl,
+          timeout: options.ollamaConfig.timeout
+        });
+      }
+      
+      // Get effective URL (priority: options > dynamic > env)
+      const baseUrl = this.getEffectiveBaseUrl(options.ollamaConfig?.baseUrl);
+      const timeout = options.ollamaConfig?.timeout || this.dynamicTimeout || 300000;
       
       this.logger.log(`Gerando resposta com modelo: ${options.model || this.defaultModel}`);
-      this.logger.log(`Usando Ollama URL: ${baseUrl}`);
+      this.logger.log(`Usando Ollama URL: ${baseUrl}${options.ollamaConfig?.baseUrl ? ' (from frontend)' : this.dynamicBaseUrl ? ' (from dynamic config)' : ' (from env)'}`);
 
       const requestBody = {
         model: options.model || this.defaultModel,
@@ -272,8 +311,11 @@ Title:`;
     negativePrompt: string;
     style?: string;
   }> {
+    const baseUrl = this.getEffectiveBaseUrl();
+    
     try {
       this.logger.log(`Generating SD prompt for: "${userMessage.substring(0, 50)}..."`);
+      this.logger.log(`Usando Ollama URL para prompt SD: ${baseUrl}`);
 
       const systemPrompt = `You are an expert prompt engineer for Stable Diffusion image generation. 
 Your task is to convert user requests into highly detailed, optimized prompts for SDXL.
@@ -296,7 +338,7 @@ User request: "${userMessage}"
 
 JSON:`;
 
-      const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+      const response = await fetch(`${baseUrl}/api/generate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -367,29 +409,35 @@ JSON:`;
 
   /**
    * Verifica se o serviço Ollama está disponível
+   * @param customBaseUrl - Optional custom URL to check
    * @returns Promise<boolean>
    */
-  async isAvailable(): Promise<boolean> {
+  async isAvailable(customBaseUrl?: string): Promise<boolean> {
+    const baseUrl = this.getEffectiveBaseUrl(customBaseUrl);
+    
     try {
-      const response = await fetch(`${this.ollamaBaseUrl}/api/tags`, {
+      const response = await fetch(`${baseUrl}/api/tags`, {
         method: 'GET',
         signal: AbortSignal.timeout(5000), // 5 segundo timeout
       });
 
       return response.ok;
     } catch (error) {
-      this.logger.warn(`Ollama não está disponível: ${error.message}`);
+      this.logger.warn(`Ollama não está disponível em ${baseUrl}: ${error.message}`);
       return false;
     }
   }
 
   /**
    * Lista os modelos disponíveis no Ollama
+   * @param customBaseUrl - Optional custom URL to query
    * @returns Promise com lista de modelos
    */
-  async getAvailableModels(): Promise<string[]> {
+  async getAvailableModels(customBaseUrl?: string): Promise<string[]> {
+    const baseUrl = this.getEffectiveBaseUrl(customBaseUrl);
+    
     try {
-      const response = await fetch(`${this.ollamaBaseUrl}/api/tags`);
+      const response = await fetch(`${baseUrl}/api/tags`);
       
       if (!response.ok) {
         throw new Error(`API error: ${response.status}`);
@@ -398,7 +446,7 @@ JSON:`;
       const data = await response.json();
       return data.models?.map((model: any) => model.name) || [];
     } catch (error) {
-      this.logger.error(`Erro ao buscar modelos: ${error.message}`);
+      this.logger.error(`Erro ao buscar modelos em ${baseUrl}: ${error.message}`);
       return [];
     }
   }
