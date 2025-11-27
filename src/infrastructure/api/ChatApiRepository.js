@@ -88,6 +88,8 @@ export class ChatApiRepository extends ChatRepository {
       // Use streaming endpoint if callback provided
       if (onToken) {
         console.log('🌊 Using streaming endpoint...');
+        console.log('📝 Current session ID:', this.currentSessionId || 'none (will create new)');
+        
         const response = await fetch(`${this.baseURL}/chat/messages/stream`, {
           method: 'POST',
           headers: this.getAuthHeaders(),
@@ -103,6 +105,7 @@ export class ChatApiRepository extends ChatRepository {
         const decoder = new TextDecoder();
         let fullResponse = '';
         let attachments = null;
+        let sessionId = null;
         let buffer = ''; // Buffer for incomplete chunks
 
         while (true) {
@@ -125,6 +128,13 @@ export class ChatApiRepository extends ChatRepository {
                   throw new Error(data.error);
                 }
                 
+                // Capture session ID when received
+                if (data.sessionId) {
+                  sessionId = data.sessionId;
+                  this.currentSessionId = sessionId;
+                  console.log('📝 Session ID received and stored:', sessionId);
+                }
+                
                 // Handle image generation (non-streamable content)
                 if (data.isImageGeneration && data.attachments) {
                   console.log('🎨 Received image generation response');
@@ -137,6 +147,11 @@ export class ChatApiRepository extends ChatRepository {
                 }
                 
                 if (data.done) {
+                  // Final session ID update
+                  if (data.sessionId && !this.currentSessionId) {
+                    this.currentSessionId = data.sessionId;
+                    console.log('📝 Final session ID stored:', data.sessionId);
+                  }
                   onToken('', fullResponse, true);
                 }
               } catch (e) {
@@ -158,6 +173,9 @@ export class ChatApiRepository extends ChatRepository {
             }
             if (data.attachments) {
               attachments = data.attachments;
+            }
+            if (data.sessionId) {
+              this.currentSessionId = data.sessionId;
             }
           } catch (e) {
             // Ignore parsing errors on final chunk

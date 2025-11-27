@@ -219,13 +219,13 @@ export class ChatUseCase {
 
   /**
    * Envia uma mensagem com streaming
-   * Returns response data for image generation cases (non-streamable)
+   * Always returns session ID so frontend can track the conversation
    */
   async sendMessageWithStreaming(
     userId: string,
     sendMessageDto: SendMessageDto,
     onToken: (token: string, fullText: string) => void
-  ): Promise<{ isImageGeneration?: boolean; content?: string; attachments?: any[] } | void> {
+  ): Promise<{ sessionId: string; isImageGeneration?: boolean; content?: string; attachments?: any[] }> {
     let session: ChatSession;
 
     // Se não foi fornecido sessionId, cria uma nova sessão
@@ -237,11 +237,13 @@ export class ChatUseCase {
         lastActivityAt: new Date(),
       };
       session = await this.chatSessionRepository.create(newSessionData);
+      this.logger.log(`📝 Created new session: ${session.id}`);
     } else {
       session = await this.chatSessionRepository.findById(sendMessageDto.sessionId);
       if (!session || session.userId !== userId) {
         throw new ForbiddenException('Acesso negado à sessão');
       }
+      this.logger.log(`📝 Using existing session: ${session.id}`);
     }
 
     // Salva mensagem do usuário
@@ -270,8 +272,9 @@ export class ChatUseCase {
       
       await this.chatMessageRepository.create(assistantMessageData);
       
-      // Return image data so controller can send it properly
+      // Return image data + session ID so frontend can track conversation
       return {
+        sessionId: session.id,
         isImageGeneration: true,
         content: aiResponse.content,
         attachments: aiResponse.attachments
@@ -300,6 +303,9 @@ export class ChatUseCase {
       { model: aiResponse.model, tokens: aiResponse.tokens }
     );
     await this.chatMessageRepository.create(assistantMessageData);
+
+    // Always return session ID
+    return { sessionId: session.id };
   }
 
   /**

@@ -155,13 +155,17 @@ export class ChatController {
           token: result.content, 
           fullText: result.content, 
           attachments: result.attachments,
+          sessionId: result.sessionId,
           isImageGeneration: true,
           done: false 
         })}\n\n`);
       }
 
-      // Send completion message
-      res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+      // Send completion message with session ID so frontend can track conversation
+      res.write(`data: ${JSON.stringify({ 
+        done: true, 
+        sessionId: result?.sessionId 
+      })}\n\n`);
       res.end();
     } catch (error) {
       res.write(`data: ${JSON.stringify({ error: error.message, done: true })}\n\n`);
