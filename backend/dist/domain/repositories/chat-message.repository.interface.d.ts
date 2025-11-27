@@ -9,6 +9,7 @@ export interface IChatMessageRepository {
         total: number;
     }>;
     findLastBySessionId(sessionId: string): Promise<ChatMessage | null>;
+    findRecentByUserId(userId: string, limit?: number): Promise<ChatMessage[]>;
     findByRole(sessionId: string, role: 'user' | 'assistant' | 'system'): Promise<ChatMessage[]>;
     searchInSession(sessionId: string, query: string): Promise<ChatMessage[]>;
     findByDateRange(sessionId: string, startDate: Date, endDate: Date): Promise<ChatMessage[]>;

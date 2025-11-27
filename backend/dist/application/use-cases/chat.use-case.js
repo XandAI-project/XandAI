@@ -11,17 +11,21 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var ChatUseCase_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.ChatUseCase = void 0;
 const common_1 = require("@nestjs/common");
 const chat_message_entity_1 = require("../../domain/entities/chat-message.entity");
 const ollama_service_1 = require("../../infrastructure/services/ollama.service");
-let ChatUseCase = class ChatUseCase {
-    constructor(chatSessionRepository, chatMessageRepository, userRepository, ollamaService) {
+const stable_diffusion_service_1 = require("../../infrastructure/services/stable-diffusion.service");
+let ChatUseCase = ChatUseCase_1 = class ChatUseCase {
+    constructor(chatSessionRepository, chatMessageRepository, userRepository, ollamaService, stableDiffusionService) {
         this.chatSessionRepository = chatSessionRepository;
         this.chatMessageRepository = chatMessageRepository;
         this.userRepository = userRepository;
         this.ollamaService = ollamaService;
+        this.stableDiffusionService = stableDiffusionService;
+        this.logger = new common_1.Logger(ChatUseCase_1.name);
     }
     async createSession(userId, createSessionDto) {
         const user = await this.userRepository.findById(userId);
@@ -53,6 +57,9 @@ let ChatUseCase = class ChatUseCase {
         }
         if (session.userId !== userId) {
             throw new common_1.ForbiddenException('Acesso negado à sessão');
+        }
+        if (session.messages && session.messages.length > 0) {
+            session.messages.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
         }
         return this.mapSessionToDto(session, true);
     }
@@ -114,12 +121,60 @@ let ChatUseCase = class ChatUseCase {
         const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
         const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
         const assistantMessageData = chat_message_entity_1.ChatMessage.createAssistantMessage(aiResponse.content, session.id, aiResponse.metadata);
+        if (aiResponse.attachments && aiResponse.attachments.length > 0) {
+            assistantMessageData.attachments = aiResponse.attachments;
+        }
         const assistantMessage = await this.chatMessageRepository.create(assistantMessageData);
         return {
             userMessage: this.mapMessageToDto(userMessage),
-            assistantMessage: this.mapMessageToDto(assistantMessage),
+            assistantMessage: this.mapMessageWithAttachmentsToDto(assistantMessage),
             session: this.mapSessionToDto(session),
         };
+    }
+    async sendMessageWithStreaming(userId, sendMessageDto, onToken) {
+        let session;
+        if (!sendMessageDto.sessionId) {
+            const newSessionData = {
+                userId,
+                title: this.generateSessionTitle(sendMessageDto.content),
+                status: 'active',
+                lastActivityAt: new Date(),
+            };
+            session = await this.chatSessionRepository.create(newSessionData);
+        }
+        else {
+            session = await this.chatSessionRepository.findById(sendMessageDto.sessionId);
+            if (!session || session.userId !== userId) {
+                throw new common_1.ForbiddenException('Acesso negado à sessão');
+            }
+        }
+        const userMessageData = chat_message_entity_1.ChatMessage.createUserMessage(sendMessageDto.content, session.id);
+        await this.chatMessageRepository.create(userMessageData);
+        const isImageRequest = this.ollamaService.isImageGenerationRequest(sendMessageDto.content);
+        if (isImageRequest) {
+            this.logger.log('🎨 Image generation detected in streaming endpoint - using non-streaming flow');
+            const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
+            const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
+            const assistantMessageData = chat_message_entity_1.ChatMessage.createAssistantMessage(aiResponse.content, session.id, aiResponse.metadata);
+            if (aiResponse.attachments && aiResponse.attachments.length > 0) {
+                assistantMessageData.attachments = aiResponse.attachments;
+            }
+            await this.chatMessageRepository.create(assistantMessageData);
+            return {
+                isImageGeneration: true,
+                content: aiResponse.content,
+                attachments: aiResponse.attachments
+            };
+        }
+        const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
+        const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content);
+        const aiResponse = await this.ollamaService.generateResponseWithStreaming(context, {
+            model: sendMessageDto.model,
+            temperature: sendMessageDto.temperature,
+            ollamaConfig: sendMessageDto.metadata?.ollamaConfig,
+        }, onToken);
+        const assistantMessageData = chat_message_entity_1.ChatMessage.createAssistantMessage(aiResponse.content, session.id, { model: aiResponse.model, tokens: aiResponse.tokens });
+        await this.chatMessageRepository.create(assistantMessageData);
     }
     async getSessionMessages(userId, sessionId, page = 1, limit = 50) {
         const belongsToUser = await this.chatSessionRepository.belongsToUser(sessionId, userId);
@@ -130,6 +185,12 @@ let ChatUseCase = class ChatUseCase {
         return {
             messages: messages.map(message => this.mapMessageWithAttachmentsToDto(message)),
             total,
+        };
+    }
+    async getRecentMessages(userId, limit = 50) {
+        const messages = await this.chatMessageRepository.findRecentByUserId(userId, limit);
+        return {
+            messages: messages.map(message => this.mapMessageWithAttachmentsToDto(message)),
         };
     }
     async searchMessages(userId, searchDto) {
@@ -145,6 +206,10 @@ let ChatUseCase = class ChatUseCase {
     }
     async generateAIResponse(userMessage, options, messageHistory = []) {
         try {
+            const isImageRequest = this.ollamaService.isImageGenerationRequest(userMessage);
+            if (isImageRequest) {
+                return await this.handleImageGenerationRequest(userMessage, options);
+            }
             const context = this.buildConversationContext(messageHistory, userMessage);
             const response = await this.ollamaService.generateResponse(context, {
                 model: options.model,
@@ -178,6 +243,110 @@ let ChatUseCase = class ChatUseCase {
                     error: true,
                     originalError: error.message,
                     usedHistory: false
+                }
+            };
+        }
+    }
+    async handleImageGenerationRequest(userMessage, options) {
+        this.logger.log(`Processing image generation request: "${userMessage.substring(0, 50)}..."`);
+        const forgeUrls = [
+            'http://forge:17860',
+            'http://xandai-forge:17860',
+            'http://host.docker.internal:7865',
+            'http://localhost:7865',
+        ];
+        let workingUrl = null;
+        for (const url of forgeUrls) {
+            this.logger.log(`Trying Forge at: ${url}`);
+            try {
+                const testResult = await this.stableDiffusionService.testConnection(url);
+                if (testResult.success) {
+                    workingUrl = url;
+                    this.logger.log(`✅ Forge found at: ${url}`);
+                    break;
+                }
+            }
+            catch (e) {
+                this.logger.log(`❌ Forge not available at: ${url}`);
+            }
+        }
+        if (!workingUrl) {
+            return {
+                content: '🎨 I detected you want an image, but could not connect to Stable Diffusion Forge. Please ensure Forge is running.',
+                metadata: {
+                    model: 'system',
+                    imageGeneration: false,
+                    reason: 'Forge not reachable',
+                    triedUrls: forgeUrls
+                }
+            };
+        }
+        try {
+            this.logger.log('Generating optimized SD prompt...');
+            let promptData;
+            try {
+                promptData = await this.ollamaService.generateImagePrompt(userMessage);
+            }
+            catch (promptError) {
+                this.logger.warn(`Ollama prompt generation failed, using simple prompt: ${promptError.message}`);
+                const simplePrompt = userMessage
+                    .replace(/generate|create|make|draw|an?|image|picture|photo|of|please/gi, '')
+                    .trim() || userMessage;
+                promptData = {
+                    prompt: `${simplePrompt}, highly detailed, masterpiece, best quality, 8k uhd, photorealistic`,
+                    negativePrompt: 'low quality, blurry, distorted, deformed, ugly, bad anatomy'
+                };
+            }
+            this.logger.log(`SD Prompt: "${promptData.prompt.substring(0, 100)}..."`);
+            this.logger.log(`Negative: "${promptData.negativePrompt.substring(0, 50)}..."`);
+            this.logger.log(`Calling Stable Diffusion at ${workingUrl}...`);
+            const result = await this.stableDiffusionService.generateImage({
+                prompt: promptData.prompt,
+                negativePrompt: promptData.negativePrompt,
+                config: {
+                    baseUrl: workingUrl,
+                    model: 'sd_xl_base_1.0.safetensors',
+                    enabled: true,
+                    width: 1024,
+                    height: 1024,
+                    steps: 25,
+                    cfgScale: 7,
+                }
+            });
+            if (result.success && result.imageUrl) {
+                this.logger.log(`✅ Image generated successfully: ${result.filename}`);
+                return {
+                    content: `🎨 Here's the image I generated for you!\n\n**Prompt used:** ${promptData.prompt.substring(0, 200)}${promptData.prompt.length > 200 ? '...' : ''}`,
+                    metadata: {
+                        model: 'stable-diffusion',
+                        imageGeneration: true,
+                        sdModel: 'sd_xl_base_1.0.safetensors',
+                        prompt: promptData.prompt,
+                        negativePrompt: promptData.negativePrompt,
+                        processingTime: result.metadata?.processingTime || 0,
+                    },
+                    attachments: [{
+                            type: 'image',
+                            url: result.imageUrl,
+                            filename: result.filename,
+                            originalPrompt: promptData.prompt,
+                            metadata: result.metadata
+                        }]
+                };
+            }
+            else {
+                throw new Error(result.error || 'Unknown image generation error');
+            }
+        }
+        catch (error) {
+            this.logger.error(`Image generation failed: ${error.message}`);
+            return {
+                content: `🎨 I tried to generate an image for you, but encountered an error: ${error.message}\n\nPlease try again or rephrase your request.`,
+                metadata: {
+                    model: 'stable-diffusion',
+                    imageGeneration: false,
+                    error: true,
+                    errorMessage: error.message
                 }
             };
         }
@@ -264,10 +433,65 @@ let ChatUseCase = class ChatUseCase {
             updatedAt: message.updatedAt,
         };
     }
+    async createOrUpdateMessage(userId, messageId, messageData) {
+        let sessionId = messageData.chatSessionId;
+        if (!sessionId) {
+            const sessions = await this.chatSessionRepository.findByUserId(userId, 1, 1);
+            if (sessions.sessions.length > 0) {
+                sessionId = sessions.sessions[0].id;
+            }
+            else {
+                const newSession = await this.chatSessionRepository.create({
+                    title: 'Nova Conversa',
+                    description: 'Sessão criada automaticamente',
+                    userId: userId,
+                    status: 'active'
+                });
+                sessionId = newSession.id;
+            }
+        }
+        let message = await this.chatMessageRepository.findById(messageId);
+        if (message) {
+            message = await this.chatMessageRepository.update(messageId, {
+                content: messageData.content,
+                role: messageData.role
+            });
+        }
+        else {
+            message = await this.chatMessageRepository.create({
+                id: messageId,
+                content: messageData.content,
+                role: messageData.role,
+                chatSessionId: sessionId,
+                status: 'delivered'
+            });
+        }
+        return this.mapMessageWithAttachmentsToDto(message);
+    }
     async attachImageToMessage(userId, messageId, imageUrl, filename, originalPrompt, metadata) {
-        const message = await this.chatMessageRepository.findById(messageId);
+        let message = await this.chatMessageRepository.findById(messageId);
         if (!message) {
-            throw new common_1.NotFoundException('Mensagem não encontrada');
+            const sessions = await this.chatSessionRepository.findByUserId(userId, 1, 1);
+            let sessionId;
+            if (sessions.sessions.length > 0) {
+                sessionId = sessions.sessions[0].id;
+            }
+            else {
+                const newSession = await this.chatSessionRepository.create({
+                    title: 'Nova Conversa',
+                    description: 'Sessão criada automaticamente',
+                    userId: userId,
+                    status: 'active'
+                });
+                sessionId = newSession.id;
+            }
+            message = await this.chatMessageRepository.create({
+                id: messageId,
+                content: 'Resposta com imagem gerada',
+                role: 'assistant',
+                chatSessionId: sessionId,
+                status: 'delivered'
+            });
         }
         const session = await this.chatSessionRepository.findByIdAndUserId(message.chatSessionId, userId);
         if (!session) {
@@ -312,11 +536,12 @@ let ChatUseCase = class ChatUseCase {
     }
 };
 exports.ChatUseCase = ChatUseCase;
-exports.ChatUseCase = ChatUseCase = __decorate([
+exports.ChatUseCase = ChatUseCase = ChatUseCase_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, common_1.Inject)('IChatSessionRepository')),
     __param(1, (0, common_1.Inject)('IChatMessageRepository')),
     __param(2, (0, common_1.Inject)('IUserRepository')),
-    __metadata("design:paramtypes", [Object, Object, Object, ollama_service_1.OllamaService])
+    __metadata("design:paramtypes", [Object, Object, Object, ollama_service_1.OllamaService,
+        stable_diffusion_service_1.StableDiffusionService])
 ], ChatUseCase);
 //# sourceMappingURL=chat.use-case.js.map

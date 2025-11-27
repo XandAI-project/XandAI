@@ -52,9 +52,64 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
     constructor(configService) {
         this.configService = configService;
         this.logger = new common_1.Logger(StableDiffusionService_1.name);
-        this.defaultBaseUrl = this.configService.get('SD_BASE_URL', 'http://192.168.3.70:7861');
+        this.isForgeAvailable = false;
+        this.sdEnabled = this.configService.get('SD_ENABLED', 'false') === 'true';
+        this.defaultBaseUrl = this.configService.get('SD_BASE_URL', 'http://localhost:7685');
+        this.sdApiUser = this.configService.get('SD_API_USER', '');
+        this.sdApiPassword = this.configService.get('SD_API_PASSWORD', '');
+        this.sdDefaultModel = this.configService.get('SD_DEFAULT_MODEL', 'sd_xl_base_1.0.safetensors');
         this.imagesDir = path.join(process.cwd(), 'public', 'images');
         this.ensureImagesDirExists();
+    }
+    async onModuleInit() {
+        if (this.sdEnabled) {
+            this.logger.log('🎨 Stable Diffusion auto-configuration enabled');
+            this.logger.log(`   Base URL: ${this.defaultBaseUrl}`);
+            await this.checkForgeConnection();
+        }
+    }
+    async checkForgeConnection() {
+        try {
+            const result = await this.testConnection(this.defaultBaseUrl, this.getBasicAuthToken());
+            this.isForgeAvailable = result.success;
+            if (result.success) {
+                this.logger.log('✅ Forge connection established successfully');
+                const models = await this.getAvailableModels(this.defaultBaseUrl, this.getBasicAuthToken());
+                if (models.length > 0) {
+                    this.logger.log(`   Available models: ${models.map(m => m.model_name).join(', ')}`);
+                }
+            }
+            else {
+                this.logger.warn(`⚠️ Forge not available: ${result.message}`);
+                this.logger.warn('   Image generation will be disabled until Forge is ready');
+            }
+        }
+        catch (error) {
+            this.logger.warn(`⚠️ Could not connect to Forge: ${error.message}`);
+            this.isForgeAvailable = false;
+        }
+    }
+    getBasicAuthToken() {
+        if (this.sdApiUser && this.sdApiPassword) {
+            const credentials = Buffer.from(`${this.sdApiUser}:${this.sdApiPassword}`).toString('base64');
+            return `Basic ${credentials}`;
+        }
+        return null;
+    }
+    getAuthHeaders(customToken) {
+        const headers = {
+            'Content-Type': 'application/json',
+        };
+        if (customToken) {
+            headers['Authorization'] = `Bearer ${customToken}`;
+        }
+        else {
+            const basicAuth = this.getBasicAuthToken();
+            if (basicAuth) {
+                headers['Authorization'] = basicAuth;
+            }
+        }
+        return headers;
     }
     ensureImagesDirExists() {
         try {
@@ -67,22 +122,41 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
             this.logger.error(`Erro ao criar diretório de imagens: ${error.message}`);
         }
     }
+    getConfigStatus() {
+        return {
+            enabled: this.sdEnabled,
+            available: this.isForgeAvailable,
+            baseUrl: this.defaultBaseUrl,
+            defaultModel: this.sdDefaultModel,
+        };
+    }
     async testConnection(baseUrl, sdToken) {
         const url = baseUrl || this.defaultBaseUrl;
         try {
             this.logger.log(`Testando conexão com SD: ${url}`);
-            const headers = {};
-            if (sdToken) {
-                headers['Authorization'] = `Bearer ${sdToken}`;
-            }
-            const response = await fetch(`${url}/docs`, {
+            const headers = this.getAuthHeaders(sdToken);
+            const response = await fetch(`${url}/sdapi/v1/sd-models`, {
                 method: 'GET',
                 headers,
                 signal: AbortSignal.timeout(10000)
             });
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            if (response.ok) {
+                this.isForgeAvailable = true;
+                return {
+                    success: true,
+                    message: 'Conexão estabelecida com sucesso',
+                    version: 'API disponível'
+                };
             }
+            const docsResponse = await fetch(`${url}/docs`, {
+                method: 'GET',
+                headers,
+                signal: AbortSignal.timeout(10000)
+            });
+            if (!docsResponse.ok) {
+                throw new Error(`HTTP ${docsResponse.status}: ${docsResponse.statusText}`);
+            }
+            this.isForgeAvailable = true;
             return {
                 success: true,
                 message: 'Conexão estabelecida com sucesso',
@@ -91,6 +165,7 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
         }
         catch (error) {
             this.logger.error(`Erro ao testar conexão SD: ${error.message}`);
+            this.isForgeAvailable = false;
             return {
                 success: false,
                 message: error.message
@@ -100,12 +175,7 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
     async getAvailableModels(baseUrl, sdToken) {
         const url = baseUrl || this.defaultBaseUrl;
         try {
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (sdToken) {
-                headers['Authorization'] = `Bearer ${sdToken}`;
-            }
+            const headers = this.getAuthHeaders(sdToken);
             const response = await fetch(`${url}/sdapi/v1/sd-models`, {
                 method: 'GET',
                 headers,
@@ -132,34 +202,39 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
         try {
             const config = generateDto.config || {};
             const baseUrl = config.baseUrl || this.defaultBaseUrl;
+            const useModel = config.model || this.sdDefaultModel;
             if (config.enabled === false) {
                 throw new Error('Stable Diffusion não está habilitado');
             }
+            if (!this.isForgeAvailable && this.sdEnabled) {
+                await this.checkForgeConnection();
+                if (!this.isForgeAvailable) {
+                    throw new Error('Forge não está disponível. Verifique se o serviço está rodando.');
+                }
+            }
             this.logger.log(`Gerando imagem com prompt: "${generateDto.prompt.substring(0, 50)}..."`);
-            this.logger.log(`Usando SD URL: ${baseUrl}`);
+            this.logger.log(`Usando SD URL: ${baseUrl}, Model: ${useModel}`);
+            const isSDXL = useModel.toLowerCase().includes('sdxl') || useModel.toLowerCase().includes('xl');
+            const defaultWidth = isSDXL ? 1024 : 512;
+            const defaultHeight = isSDXL ? 1024 : 512;
             const requestBody = {
                 prompt: generateDto.prompt,
-                negative_prompt: generateDto.negativePrompt || "low quality, blurry, distorted",
-                steps: config.steps || 20,
-                width: config.width || 512,
-                height: config.height || 512,
+                negative_prompt: generateDto.negativePrompt || "low quality, blurry, distorted, deformed, ugly",
+                steps: config.steps || (isSDXL ? 25 : 20),
+                width: config.width || defaultWidth,
+                height: config.height || defaultHeight,
                 cfg_scale: config.cfgScale || 7,
-                sampler_name: config.sampler || 'Euler a',
+                sampler_name: config.sampler || (isSDXL ? 'DPM++ 2M Karras' : 'Euler a'),
                 batch_size: 1,
                 n_iter: 1,
                 seed: -1,
-                ...(config.model && {
+                ...(useModel && {
                     override_settings: {
-                        sd_model_checkpoint: config.model
+                        sd_model_checkpoint: useModel
                     }
                 })
             };
-            const headers = {
-                'Content-Type': 'application/json',
-            };
-            if (config.token) {
-                headers['Authorization'] = `Bearer ${config.token}`;
-            }
+            const headers = this.getAuthHeaders(config.token);
             const response = await fetch(`${baseUrl}/sdapi/v1/txt2img`, {
                 method: 'POST',
                 headers,
@@ -167,7 +242,8 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
                 signal: AbortSignal.timeout(300000)
             });
             if (!response.ok) {
-                throw new Error(`Erro na geração SD: ${response.status} ${response.statusText}`);
+                const errorText = await response.text();
+                throw new Error(`Erro na geração SD: ${response.status} ${response.statusText} - ${errorText}`);
             }
             const result = await response.json();
             if (!result.images || result.images.length === 0) {
@@ -176,7 +252,7 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
             const imageBase64 = result.images[0];
             const filename = `sd_${Date.now()}_${Math.random().toString(36).substring(7)}.png`;
             const imagePath = path.join(this.imagesDir, filename);
-            const imageUrl = `/images/${filename}`;
+            const imageUrl = `/api/v1/stable-diffusion/images/${filename}`;
             const imageBuffer = Buffer.from(imageBase64, 'base64');
             fs.writeFileSync(imagePath, imageBuffer);
             const processingTime = Date.now() - startTime;
@@ -191,6 +267,7 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
                     negativePrompt: generateDto.negativePrompt,
                     parameters: requestBody,
                     processingTime,
+                    model: useModel,
                     info: result.info ? JSON.parse(result.info) : null
                 }
             };
@@ -207,11 +284,10 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
     async getSystemInfo(baseUrl) {
         const url = baseUrl || this.defaultBaseUrl;
         try {
+            const headers = this.getAuthHeaders();
             const response = await fetch(`${url}/sdapi/v1/memory`, {
                 method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                headers,
                 signal: AbortSignal.timeout(5000)
             });
             if (!response.ok) {
@@ -227,11 +303,10 @@ let StableDiffusionService = StableDiffusionService_1 = class StableDiffusionSer
     async interruptGeneration(baseUrl) {
         const url = baseUrl || this.defaultBaseUrl;
         try {
+            const headers = this.getAuthHeaders();
             const response = await fetch(`${url}/sdapi/v1/interrupt`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
+                headers
             });
             return response.ok;
         }

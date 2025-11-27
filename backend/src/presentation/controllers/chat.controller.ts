@@ -140,13 +140,25 @@ export class ChatController {
 
     try {
       // Stream the response
-      await this.chatUseCase.sendMessageWithStreaming(
+      const result = await this.chatUseCase.sendMessageWithStreaming(
         req.user.id,
         sendMessageDto,
         (token: string, fullText: string) => {
           res.write(`data: ${JSON.stringify({ token, fullText, done: false })}\n\n`);
         }
       );
+
+      // Check if this was an image generation (non-streamable)
+      if (result && result.isImageGeneration) {
+        // Send the full content and attachments at once
+        res.write(`data: ${JSON.stringify({ 
+          token: result.content, 
+          fullText: result.content, 
+          attachments: result.attachments,
+          isImageGeneration: true,
+          done: false 
+        })}\n\n`);
+      }
 
       // Send completion message
       res.write(`data: ${JSON.stringify({ done: true })}\n\n`);

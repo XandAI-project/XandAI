@@ -140,42 +140,48 @@ export const useChat = () => {
     setIsLoading(true);
     setError(null);
 
+    // Generate IDs upfront
+    const assistantMessageId = generateUUID();
+    let streamedContent = '';
+    let streamedAttachments = null;
+
     try {
       // Adiciona a mensagem do usuário imediatamente (UI only - backend will save it)
       const userMessage = Message.createUserMessage(messageContent);
       setMessages(prev => [...prev, userMessage]);
 
       // Cria mensagem de resposta vazia para streaming
-      const assistantMessageId = generateUUID();
       const streamingMessage = Message.createAssistantMessage('');
       streamingMessage.id = assistantMessageId;
       streamingMessage.isStreaming = true;
       
       setMessages(prev => [...prev, streamingMessage]);
 
-      // Callback para streaming de tokens
+      // Callback para streaming de tokens - optimized for React re-renders
       const onToken = (token, fullText, isDone) => {
+        streamedContent = fullText;
+        
+        // Use functional update to ensure we have latest state
         setMessages(prev => {
-          const newMessages = prev.map(msg => {
+          return prev.map(msg => {
             if (msg.id === assistantMessageId) {
-              // Create new object to trigger React re-render
-              return {
-                ...msg,
-                id: assistantMessageId,
-                content: fullText,
-                sender: 'assistant',
-                isStreaming: !isDone,
-                isTyping: false,
-                timestamp: msg.timestamp || new Date(),
-                isFromUser: () => false,
-                isFromAssistant: () => true,
-                hasAttachments: () => false,
-                getFormattedTime: () => new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-              };
+              // Create a new Message instance to ensure React detects the change
+              const updatedMessage = new Message(
+                assistantMessageId,
+                fullText,
+                'assistant',
+                msg.timestamp || new Date(),
+                false, // isTyping
+                !isDone // isStreaming
+              );
+              // Preserve any attachments that were streamed
+              if (msg.attachments) {
+                updatedMessage.attachments = msg.attachments;
+              }
+              return updatedMessage;
             }
             return msg;
           });
-          return [...newMessages];
         });
       };
 
@@ -184,32 +190,31 @@ export const useChat = () => {
       const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
       
       console.log('📩 Streaming completed:', response);
-      const assistantContent = response.assistantMessage?.content || '';
+      const assistantContent = response.assistantMessage?.content || streamedContent || '';
       const attachments = response.assistantMessage?.attachments || [];
 
-      // Final update to ensure message is complete
+      // Final update to ensure message is complete with all data
       const finalMessage = new Message(
         assistantMessageId,
         assistantContent,
         'assistant',
         new Date(),
-        false,
-        false
+        false, // isTyping
+        false  // isStreaming - done
       );
       
       if (attachments.length > 0) {
         finalMessage.attachments = [...attachments];
-        console.log('🎨 Added attachments to message');
+        console.log('🎨 Added attachments to final message:', attachments);
       }
 
       setMessages(prev => {
-        const newMessages = prev.map(msg => {
+        return prev.map(msg => {
           if (msg.id === assistantMessageId) {
             return finalMessage;
           }
           return msg;
         });
-        return [...newMessages];
       });
 
     } catch (err) {
@@ -217,11 +222,11 @@ export const useChat = () => {
       setError(err.message || 'Failed to send message');
       
       // Remove streaming message in case of error
-      setMessages(prev => prev.filter(msg => !msg.isStreaming));
+      setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
     } finally {
       setIsLoading(false);
     }
-  }, [chatService, currentSessionId, sendMessageLocally]);
+  }, [chatService]);
 
   /**
    * Clears all message history

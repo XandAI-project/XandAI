@@ -1,3 +1,4 @@
+import { Response } from 'express';
 import { ChatUseCase } from '../../application/use-cases/chat.use-case';
 import { CreateChatSessionDto, UpdateChatSessionDto, SendMessageDto, SendMessageResponseDto, ChatSessionResponseDto, ChatMessageResponseDto, SearchMessagesDto } from '../../application/dto/chat.dto';
 export declare class ChatController {
@@ -13,6 +14,7 @@ export declare class ChatController {
     archiveSession(req: any, sessionId: string): Promise<void>;
     deleteSession(req: any, sessionId: string): Promise<void>;
     sendMessage(req: any, sendMessageDto: SendMessageDto): Promise<SendMessageResponseDto>;
+    sendMessageStream(req: any, sendMessageDto: SendMessageDto, res: Response): Promise<void>;
     sendMessageToSession(req: any, sessionId: string, messageData: {
         content: string;
         model?: string;
@@ -34,12 +36,20 @@ export declare class ChatController {
         messages: ChatMessageResponseDto[];
         total: number;
     }>;
+    getRecentMessages(req: any, limit: number): Promise<{
+        messages: ChatMessageResponseDto[];
+    }>;
     searchMessages(req: any, searchDto: SearchMessagesDto): Promise<ChatMessageResponseDto[]>;
+    createOrUpdateMessage(req: any, messageId: string, messageData: {
+        id: string;
+        content: string;
+        role: string;
+        chatSessionId?: string;
+    }): Promise<ChatMessageResponseDto>;
     attachImageToMessage(req: any, messageId: string, attachmentData: {
         imageUrl: string;
         filename: string;
         originalPrompt?: string;
         metadata?: any;
     }): Promise<ChatMessageResponseDto>;
-    sendMessageStream(req: any, sendMessageDto: SendMessageDto): Promise<SendMessageResponseDto>;
 }

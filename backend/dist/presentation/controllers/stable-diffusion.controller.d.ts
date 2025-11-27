@@ -1,3 +1,4 @@
+import { Response } from 'express';
 import { StableDiffusionService, GeneratedImageResult } from '../../infrastructure/services/stable-diffusion.service';
 export declare class GenerateImageRequestDto {
     prompt: string;
@@ -47,6 +48,7 @@ export declare class StableDiffusionController {
     listImages(): Promise<{
         images: string[];
     }>;
+    getImage(filename: string, res: Response): Promise<void>;
     cleanupImages(body: {
         maxAgeHours?: number;
     }): Promise<{

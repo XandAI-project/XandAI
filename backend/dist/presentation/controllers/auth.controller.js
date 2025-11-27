@@ -21,6 +21,12 @@ let AuthController = class AuthController {
     constructor(authUseCase) {
         this.authUseCase = authUseCase;
     }
+    health() {
+        return {
+            status: 'ok',
+            timestamp: new Date().toISOString()
+        };
+    }
     async register(registerDto) {
         return await this.authUseCase.register(registerDto);
     }
@@ -44,6 +50,13 @@ let AuthController = class AuthController {
     }
 };
 exports.AuthController = AuthController;
+__decorate([
+    (0, common_1.Get)('/health'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Object)
+], AuthController.prototype, "health", null);
 __decorate([
     (0, common_1.Post)('register'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),

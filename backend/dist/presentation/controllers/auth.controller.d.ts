@@ -3,6 +3,10 @@ import { RegisterUserDto, LoginUserDto, AuthResponseDto, ChangePasswordDto, Upda
 export declare class AuthController {
     private readonly authUseCase;
     constructor(authUseCase: AuthUseCase);
+    health(): {
+        status: string;
+        timestamp: string;
+    };
     register(registerDto: RegisterUserDto): Promise<AuthResponseDto>;
     login(loginDto: LoginUserDto): Promise<AuthResponseDto>;
     getProfile(req: any): Promise<any>;

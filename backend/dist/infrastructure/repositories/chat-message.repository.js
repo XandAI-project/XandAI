@@ -58,6 +58,16 @@ let ChatMessageRepository = class ChatMessageRepository {
             },
         });
     }
+    async findRecentByUserId(userId, limit = 50) {
+        return await this.messageRepository
+            .createQueryBuilder('message')
+            .leftJoinAndSelect('message.chatSession', 'session')
+            .where('session.userId = :userId', { userId })
+            .andWhere('session.status = :status', { status: 'active' })
+            .orderBy('message.createdAt', 'ASC')
+            .limit(limit)
+            .getMany();
+    }
     async findByRole(sessionId, role) {
         return await this.messageRepository.find({
             where: {

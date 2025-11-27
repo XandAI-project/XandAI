@@ -219,12 +219,13 @@ export class ChatUseCase {
 
   /**
    * Envia uma mensagem com streaming
+   * Returns response data for image generation cases (non-streamable)
    */
   async sendMessageWithStreaming(
     userId: string,
     sendMessageDto: SendMessageDto,
     onToken: (token: string, fullText: string) => void
-  ): Promise<void> {
+  ): Promise<{ isImageGeneration?: boolean; content?: string; attachments?: any[] } | void> {
     let session: ChatSession;
 
     // Se não foi fornecido sessionId, cria uma nova sessão
@@ -246,6 +247,36 @@ export class ChatUseCase {
     // Salva mensagem do usuário
     const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
     await this.chatMessageRepository.create(userMessageData);
+
+    // Check if this is an image generation request (can't be streamed)
+    const isImageRequest = this.ollamaService.isImageGenerationRequest(sendMessageDto.content);
+    
+    if (isImageRequest) {
+      this.logger.log('🎨 Image generation detected in streaming endpoint - using non-streaming flow');
+      
+      // Handle image generation without streaming
+      const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
+      const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
+      
+      const assistantMessageData = ChatMessage.createAssistantMessage(
+        aiResponse.content,
+        session.id,
+        aiResponse.metadata
+      );
+      
+      if (aiResponse.attachments && aiResponse.attachments.length > 0) {
+        assistantMessageData.attachments = aiResponse.attachments;
+      }
+      
+      await this.chatMessageRepository.create(assistantMessageData);
+      
+      // Return image data so controller can send it properly
+      return {
+        isImageGeneration: true,
+        content: aiResponse.content,
+        attachments: aiResponse.attachments
+      };
+    }
 
     // Busca histórico para contexto
     const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);

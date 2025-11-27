@@ -19,6 +19,7 @@ const chat_message_repository_1 = require("../../infrastructure/repositories/cha
 const chat_controller_1 = require("../controllers/chat.controller");
 const auth_module_1 = require("./auth.module");
 const ollama_service_1 = require("../../infrastructure/services/ollama.service");
+const stable_diffusion_service_1 = require("../../infrastructure/services/stable-diffusion.service");
 let ChatModule = class ChatModule {
 };
 exports.ChatModule = ChatModule;
@@ -32,6 +33,7 @@ exports.ChatModule = ChatModule = __decorate([
         providers: [
             chat_use_case_1.ChatUseCase,
             ollama_service_1.OllamaService,
+            stable_diffusion_service_1.StableDiffusionService,
             {
                 provide: 'IUserRepository',
                 useClass: user_repository_1.UserRepository,

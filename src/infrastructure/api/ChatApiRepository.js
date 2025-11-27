@@ -102,13 +102,20 @@ export class ChatApiRepository extends ChatRepository {
         const reader = response.body.getReader();
         const decoder = new TextDecoder();
         let fullResponse = '';
+        let attachments = null;
+        let buffer = ''; // Buffer for incomplete chunks
 
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          const lines = chunk.split('\n');
+          buffer += chunk;
+          
+          // Process complete lines from buffer
+          const lines = buffer.split('\n');
+          // Keep the last incomplete line in the buffer
+          buffer = lines.pop() || '';
 
           for (const line of lines) {
             if (line.startsWith('data: ')) {
@@ -117,21 +124,53 @@ export class ChatApiRepository extends ChatRepository {
                 if (data.error) {
                   throw new Error(data.error);
                 }
-                if (data.token) {
+                
+                // Handle image generation (non-streamable content)
+                if (data.isImageGeneration && data.attachments) {
+                  console.log('🎨 Received image generation response');
+                  fullResponse = data.fullText || data.token || '';
+                  attachments = data.attachments;
+                  onToken(data.token || '', fullResponse, false);
+                } else if (data.token !== undefined) {
                   fullResponse = data.fullText || (fullResponse + data.token);
                   onToken(data.token, fullResponse, false);
                 }
+                
                 if (data.done) {
                   onToken('', fullResponse, true);
                 }
               } catch (e) {
-                if (e.message && !e.message.includes('JSON')) {
+                if (e.message && !e.message.includes('JSON') && !e.message.includes('Unexpected')) {
                   throw e;
                 }
-                // Ignore JSON parsing errors
+                // Ignore JSON parsing errors for incomplete chunks
               }
             }
           }
+        }
+
+        // Process any remaining buffer content
+        if (buffer.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(buffer.slice(6));
+            if (data.token) {
+              fullResponse = data.fullText || (fullResponse + data.token);
+            }
+            if (data.attachments) {
+              attachments = data.attachments;
+            }
+          } catch (e) {
+            // Ignore parsing errors on final chunk
+          }
+        }
+
+        // Return response with attachments if present
+        if (attachments && attachments.length > 0) {
+          console.log('🎨 Returning response with attachments:', attachments);
+          return {
+            content: fullResponse,
+            attachments: attachments
+          };
         }
 
         return fullResponse;

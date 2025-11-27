@@ -1,9 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.databaseConfigValidation = exports.getDatabaseConfig = void 0;
-const user_entity_1 = require("@domain/entities/user.entity");
-const chat_session_entity_1 = require("@domain/entities/chat-session.entity");
-const chat_message_entity_1 = require("@domain/entities/chat-message.entity");
+const user_entity_1 = require("../../domain/entities/user.entity");
+const chat_session_entity_1 = require("../../domain/entities/chat-session.entity");
+const chat_message_entity_1 = require("../../domain/entities/chat-message.entity");
 const getDatabaseConfig = (configService) => {
     const isProduction = configService.get('NODE_ENV') === 'production';
     if (isProduction) {
@@ -15,9 +15,7 @@ const getDatabaseConfig = (configService) => {
             password: configService.get('DB_PASSWORD', 'password'),
             database: configService.get('DB_NAME', 'xandai'),
             entities: [user_entity_1.User, chat_session_entity_1.ChatSession, chat_message_entity_1.ChatMessage],
-            synchronize: false,
-            migrations: ['dist/infrastructure/database/migrations/*.js'],
-            migrationsRun: true,
+            synchronize: true,
             logging: configService.get('DB_LOGGING', 'false') === 'true',
             ssl: configService.get('DB_SSL', 'false') === 'true' ? {
                 rejectUnauthorized: false,

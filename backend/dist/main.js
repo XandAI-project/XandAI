@@ -12,7 +12,9 @@ async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
     const configService = app.get(config_1.ConfigService);
     const logger = new common_1.Logger('Bootstrap');
-    app.useStaticAssets((0, path_1.join)(__dirname, '..', 'public', 'images'), {
+    const imagesPath = (0, path_1.join)(process.cwd(), 'public', 'images');
+    logger.log(`📸 Serving images from: ${imagesPath}`);
+    app.useStaticAssets(imagesPath, {
         prefix: '/images/',
         index: false,
     });

@@ -42,6 +42,33 @@ let ChatController = class ChatController {
     async sendMessage(req, sendMessageDto) {
         return await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
     }
+    async sendMessageStream(req, sendMessageDto, res) {
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders();
+        try {
+            const result = await this.chatUseCase.sendMessageWithStreaming(req.user.id, sendMessageDto, (token, fullText) => {
+                res.write(`data: ${JSON.stringify({ token, fullText, done: false })}\n\n`);
+            });
+            if (result && result.isImageGeneration) {
+                res.write(`data: ${JSON.stringify({
+                    token: result.content,
+                    fullText: result.content,
+                    attachments: result.attachments,
+                    isImageGeneration: true,
+                    done: false
+                })}\n\n`);
+            }
+            res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
+            res.end();
+        }
+        catch (error) {
+            res.write(`data: ${JSON.stringify({ error: error.message, done: true })}\n\n`);
+            res.end();
+        }
+    }
     async sendMessageToSession(req, sessionId, messageData) {
         const sendMessageDto = {
             sessionId,
@@ -64,14 +91,17 @@ let ChatController = class ChatController {
     async getSessionMessages(req, sessionId, page, limit) {
         return await this.chatUseCase.getSessionMessages(req.user.id, sessionId, page, limit);
     }
+    async getRecentMessages(req, limit) {
+        return await this.chatUseCase.getRecentMessages(req.user.id, limit);
+    }
     async searchMessages(req, searchDto) {
         return await this.chatUseCase.searchMessages(req.user.id, searchDto);
     }
+    async createOrUpdateMessage(req, messageId, messageData) {
+        return await this.chatUseCase.createOrUpdateMessage(req.user.id, messageId, messageData);
+    }
     async attachImageToMessage(req, messageId, attachmentData) {
         return await this.chatUseCase.attachImageToMessage(req.user.id, messageId, attachmentData.imageUrl, attachmentData.filename, attachmentData.originalPrompt, attachmentData.metadata);
-    }
-    async sendMessageStream(req, sendMessageDto) {
-        return await this.chatUseCase.sendMessage(req.user.id, sendMessageDto);
     }
 };
 exports.ChatController = ChatController;
@@ -138,6 +168,15 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ChatController.prototype, "sendMessage", null);
 __decorate([
+    (0, common_1.Post)('messages/stream'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)(common_1.ValidationPipe)),
+    __param(2, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, chat_dto_1.SendMessageDto, Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "sendMessageStream", null);
+__decorate([
     (0, common_1.Post)('sessions/:sessionId/send'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Request)()),
@@ -168,6 +207,14 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ChatController.prototype, "getSessionMessages", null);
 __decorate([
+    (0, common_1.Get)('messages/recent'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(50), common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Number]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "getRecentMessages", null);
+__decorate([
     (0, common_1.Post)('messages/search'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Body)(common_1.ValidationPipe)),
@@ -176,24 +223,25 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], ChatController.prototype, "searchMessages", null);
 __decorate([
+    (0, common_1.Put)('messages/:messageId'),
+    (0, common_1.HttpCode)(common_1.HttpStatus.OK),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Param)('messageId')),
+    __param(2, (0, common_1.Body)(common_1.ValidationPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, Object]),
+    __metadata("design:returntype", Promise)
+], ChatController.prototype, "createOrUpdateMessage", null);
+__decorate([
     (0, common_1.Post)('messages/:messageId/attachments/image'),
     (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Param)('messageId', common_1.ParseUUIDPipe)),
+    __param(1, (0, common_1.Param)('messageId')),
     __param(2, (0, common_1.Body)(common_1.ValidationPipe)),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Object, String, Object]),
     __metadata("design:returntype", Promise)
 ], ChatController.prototype, "attachImageToMessage", null);
-__decorate([
-    (0, common_1.Post)('messages/stream'),
-    (0, common_1.HttpCode)(common_1.HttpStatus.CREATED),
-    __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Body)(common_1.ValidationPipe)),
-    __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, chat_dto_1.SendMessageDto]),
-    __metadata("design:returntype", Promise)
-], ChatController.prototype, "sendMessageStream", null);
 exports.ChatController = ChatController = __decorate([
     (0, common_1.Controller)('chat'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
