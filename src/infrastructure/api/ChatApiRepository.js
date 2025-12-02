@@ -147,8 +147,8 @@ export class ChatApiRepository extends ChatRepository {
                 }
                 
                 if (data.done) {
-                  // Final session ID update
-                  if (data.sessionId && !this.currentSessionId) {
+                  // Final session ID update - always use backend's session ID as source of truth
+                  if (data.sessionId) {
                     this.currentSessionId = data.sessionId;
                     console.log('📝 Final session ID stored:', data.sessionId);
                   }

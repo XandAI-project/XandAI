@@ -73,21 +73,14 @@ const ChatContainer = () => {
    */
   const handleSendMessage = async (message) => {
     try {
-      // If there's no current session in chat, create a new one
-      if (!chatCurrentSessionId && !currentSession) {
-        const newSession = await createNewSession();
-        if (newSession && newSession.id) {
-          setSession(newSession.id);
-
-        }
-      }
-      
+      // Let the backend create the session - it will return the sessionId
+      // which gets synced back to useChat via ChatApiRepository
       await sendMessage(message);
       
-      // Update history after sending message
+      // Refresh sessions to get the new one created by backend
       setTimeout(() => {
         fetchChatSessions();
-      }, 1000);
+      }, 500);
     } catch (err) {
       console.error('Error sending message:', err);
     }

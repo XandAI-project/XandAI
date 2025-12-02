@@ -189,6 +189,15 @@ export const useChat = () => {
       console.log('🌊 Sending message with streaming...');
       const response = await chatService.sendMessageWithoutUserSave(messageContent, onToken);
       
+      // Sync session ID from backend - this is the single source of truth
+      if (chatService.chatRepository && chatService.chatRepository.currentSessionId) {
+        const backendSessionId = chatService.chatRepository.currentSessionId;
+        if (backendSessionId) {
+          console.log('📝 Syncing session ID from backend:', backendSessionId);
+          setCurrentSessionId(backendSessionId);
+        }
+      }
+      
       console.log('📩 Streaming completed:', response);
       const assistantContent = response.assistantMessage?.content || streamedContent || '';
       const attachments = response.assistantMessage?.attachments || [];
