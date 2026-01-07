@@ -161,20 +161,13 @@ const ChatContainer = () => {
    */
   const handleNewChat = async () => {
     try {
-      // First archive all current sessions
-      await clearHistory();
+      // Clear current messages in UI
+      loadExternalMessages([], null);
       
-      // Create a new session
-      const newSession = await createNewSession();
+      // Reset session ID (new session will be created on first message)
+      setSession(null);
       
-      // Refresh the sessions list (archived sessions will be filtered out)
-      await fetchChatSessions();
-      
-      // Set new session as active
-      if (newSession && newSession.id) {
-        setSession(newSession.id);
-      }
-      
+      // Close sidebar
       setSidebarOpen(false);
     } catch (err) {
       console.error('Error creating new conversation:', err);
