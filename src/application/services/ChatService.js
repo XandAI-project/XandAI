@@ -176,5 +176,12 @@ export class ChatService {
    */
   createNewSession() {
     this.currentSession = ChatSession.createNew();
+    
+    // Limpa o sessionId do repositório para forçar criação de nova sessão no backend
+    if (this.chatRepository && typeof this.chatRepository.clearCurrentSessionId === 'function') {
+      this.chatRepository.clearCurrentSessionId();
+    }
+    
+    console.log('✨ New session created - repository session cleared');
   }
 }

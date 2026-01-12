@@ -18,7 +18,11 @@ import {
   InputAdornment,
   Fade,
   Chip,
-  CircularProgress
+  CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -67,6 +71,8 @@ const ChatSidebar = ({
   const [searchTerm, setSearchTerm] = useState('');
   const [editingId, setEditingId] = useState(null);
   const [editTitle, setEditTitle] = useState('');
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState(null);
 
   // Filter conversations based on search
   const filteredChats = chatHistory.filter(chat =>
@@ -133,12 +139,30 @@ const ChatSidebar = ({
   };
 
   /**
-   * Manipula a exclusão de uma conversa
+   * Abre o diálogo de confirmação de exclusão
    */
-  const handleDeleteChatLocal = async (chatId) => {
-    if (onDeleteChat) {
+  const handleDeleteClick = (chat) => {
+    setChatToDelete(chat);
+    setDeleteDialogOpen(true);
+  };
+
+  /**
+   * Fecha o diálogo de confirmação
+   */
+  const handleDeleteDialogClose = () => {
+    setDeleteDialogOpen(false);
+    setChatToDelete(null);
+  };
+
+  /**
+   * Confirma e executa a exclusão de uma conversa
+   */
+  const handleDeleteConfirm = async () => {
+    if (chatToDelete && onDeleteChat) {
       try {
-        await onDeleteChat(chatId);
+        console.log('🗑️ Deleting conversation:', chatToDelete.id);
+        await onDeleteChat(chatToDelete.id);
+        handleDeleteDialogClose();
       } catch (error) {
         console.error('Error deleting conversation:', error);
       }
@@ -434,7 +458,7 @@ const ChatSidebar = ({
                                 size="small" 
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  handleDeleteChatLocal(chat.id);
+                                  handleDeleteClick(chat);
                                 }}
                               >
                                 <DeleteIcon sx={{ fontSize: 14 }} />
@@ -471,6 +495,42 @@ const ChatSidebar = ({
         </Box>
 
       </Paper>
+
+      {/* Delete confirmation dialog */}
+      <Dialog
+        open={deleteDialogOpen}
+        onClose={handleDeleteDialogClose}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>
+          Delete Conversation?
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2">
+            Are you sure you want to delete "{chatToDelete?.title || 'this conversation'}"?
+          </Typography>
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+            This action cannot be undone. All messages in this conversation will be permanently deleted.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ p: 2, gap: 1 }}>
+          <Button 
+            onClick={handleDeleteDialogClose}
+            color="inherit"
+          >
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleDeleteConfirm}
+            color="error"
+            variant="contained"
+            startIcon={<DeleteIcon />}
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   );
 };

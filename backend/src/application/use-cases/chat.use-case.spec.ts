@@ -317,5 +317,246 @@ describe('ChatUseCase', () => {
       expect(mockChatMessageRepository.findRecentByUserId).toHaveBeenCalledWith('user-123', 50);
     });
   });
+
+  describe('Multiple Session Management', () => {
+    it('should create multiple independent sessions for the same user', async () => {
+      const session1 = await chatUseCase.createSession('user-123', {
+        title: 'Session 1',
+      });
+
+      const session2 = await chatUseCase.createSession('user-123', {
+        title: 'Session 2',
+      });
+
+      expect(mockChatSessionRepository.create).toHaveBeenCalledTimes(2);
+      expect(session1).toBeDefined();
+      expect(session2).toBeDefined();
+    });
+
+    it('should send messages to different sessions independently', async () => {
+      // Create first session and send message
+      mockChatSessionRepository.create.mockResolvedValueOnce({
+        ...mockSession,
+        id: 'session-1',
+      });
+
+      const result1 = await chatUseCase.sendMessage('user-123', {
+        content: 'Hello in session 1',
+      });
+
+      expect(result1.session.id).toBe('session-1');
+
+      // Create second session and send message
+      mockChatSessionRepository.create.mockResolvedValueOnce({
+        ...mockSession,
+        id: 'session-2',
+      });
+
+      const result2 = await chatUseCase.sendMessage('user-123', {
+        content: 'Hello in session 2',
+      });
+
+      expect(result2.session.id).toBe('session-2');
+      expect(mockChatSessionRepository.create).toHaveBeenCalledTimes(2);
+    });
+
+    it('should maintain separate message history for each session', async () => {
+      const session1Messages = [
+        { ...mockMessage, id: 'msg-1', chatSessionId: 'session-1' },
+        { ...mockMessage, id: 'msg-2', chatSessionId: 'session-1' },
+      ];
+
+      const session2Messages = [
+        { ...mockMessage, id: 'msg-3', chatSessionId: 'session-2' },
+      ];
+
+      // Get messages for session 1
+      mockChatMessageRepository.findBySessionId.mockResolvedValueOnce({
+        messages: session1Messages,
+        total: 2,
+      });
+
+      const result1 = await chatUseCase.getSessionMessages('user-123', 'session-1');
+      expect(result1.messages).toHaveLength(2);
+
+      // Get messages for session 2
+      mockChatMessageRepository.findBySessionId.mockResolvedValueOnce({
+        messages: session2Messages,
+        total: 1,
+      });
+
+      const result2 = await chatUseCase.getSessionMessages('user-123', 'session-2');
+      expect(result2.messages).toHaveLength(1);
+    });
+
+    it('should not leak messages between sessions', async () => {
+      // Send message to session-1
+      mockChatSessionRepository.findById.mockResolvedValueOnce({
+        ...mockSession,
+        id: 'session-1',
+      });
+
+      await chatUseCase.sendMessage('user-123', {
+        content: 'Message for session 1',
+        sessionId: 'session-1',
+      });
+
+      // Verify message was created with correct sessionId
+      expect(mockChatMessageRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          chatSessionId: 'session-1',
+        })
+      );
+    });
+  });
+
+  describe('Session Lifecycle', () => {
+    it('should create session without sessionId in sendMessage', async () => {
+      const result = await chatUseCase.sendMessage('user-123', {
+        content: 'First message',
+      });
+
+      expect(mockChatSessionRepository.create).toHaveBeenCalled();
+      expect(result.session).toBeDefined();
+      expect(result.session.id).toBe('session-123');
+    });
+
+    it('should reuse existing session when sessionId provided', async () => {
+      const result = await chatUseCase.sendMessage('user-123', {
+        content: 'Follow-up message',
+        sessionId: 'session-123',
+      });
+
+      expect(mockChatSessionRepository.create).not.toHaveBeenCalled();
+      expect(mockChatSessionRepository.findById).toHaveBeenCalledWith('session-123');
+      expect(result.session.id).toBe('session-123');
+    });
+
+    it('should update session activity when sending message', async () => {
+      await chatUseCase.sendMessage('user-123', {
+        content: 'Message',
+        sessionId: 'session-123',
+      });
+
+      expect(mockSession.updateActivity).toHaveBeenCalled();
+      expect(mockChatSessionRepository.update).toHaveBeenCalledWith(
+        'session-123',
+        expect.objectContaining({
+          lastActivityAt: expect.any(Date),
+        })
+      );
+    });
+
+    it('should generate title from first message when creating session', async () => {
+      const longMessage = 'This is a very long message that should be truncated for the title';
+      
+      await chatUseCase.sendMessage('user-123', {
+        content: longMessage,
+      });
+
+      expect(mockChatSessionRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: expect.stringContaining('This is a'),
+        })
+      );
+    });
+  });
+
+  describe('Session Context and History', () => {
+    it('should include message history in AI context', async () => {
+      const historyMessages = [
+        { ...mockMessage, id: 'msg-1', content: 'Previous user message', role: 'user' },
+        { ...mockMessage, id: 'msg-2', content: 'Previous AI response', role: 'assistant' },
+      ];
+
+      mockChatMessageRepository.findBySessionId.mockResolvedValueOnce({
+        messages: historyMessages,
+        total: 2,
+      });
+
+      await chatUseCase.sendMessage('user-123', {
+        content: 'New message',
+        sessionId: 'session-123',
+      });
+
+      // Verify that generateResponse was called with context including history
+      expect(mockOllamaService.generateResponse).toHaveBeenCalledWith(
+        expect.stringContaining('Previous user message'),
+        expect.any(Object)
+      );
+    });
+
+    it('should limit history context to last 10 messages', async () => {
+      // Create 15 messages
+      const manyMessages = Array.from({ length: 15 }, (_, i) => ({
+        ...mockMessage,
+        id: `msg-${i}`,
+        content: `Message ${i}`,
+        createdAt: new Date(Date.now() + i * 1000),
+      }));
+
+      mockChatMessageRepository.findBySessionId.mockResolvedValueOnce({
+        messages: manyMessages,
+        total: 15,
+      });
+
+      await chatUseCase.sendMessage('user-123', {
+        content: 'New message',
+        sessionId: 'session-123',
+      });
+
+      // Context should only include last 10 messages + current
+      const contextCall = mockOllamaService.generateResponse.mock.calls[0][0];
+      const messageCount = (contextCall.match(/Message \d+/g) || []).length;
+      expect(messageCount).toBeLessThanOrEqual(10);
+    });
+  });
+
+  describe('Session Streaming', () => {
+    it('should return sessionId when streaming without initial sessionId', async () => {
+      const onToken = jest.fn();
+
+      const result = await chatUseCase.sendMessageWithStreaming(
+        'user-123',
+        { content: 'Hello' },
+        onToken
+      );
+
+      expect(result.sessionId).toBeDefined();
+      expect(result.sessionId).toBe('session-123');
+    });
+
+    it('should return same sessionId when streaming with existing session', async () => {
+      const onToken = jest.fn();
+
+      const result = await chatUseCase.sendMessageWithStreaming(
+        'user-123',
+        { content: 'Hello', sessionId: 'session-123' },
+        onToken
+      );
+
+      expect(result.sessionId).toBe('session-123');
+      expect(mockChatSessionRepository.create).not.toHaveBeenCalled();
+    });
+
+    it('should handle image generation in streaming endpoint', async () => {
+      mockOllamaService.isImageGenerationRequest.mockReturnValueOnce(true);
+      mockOllamaService.generateResponse.mockResolvedValueOnce({
+        content: 'Image generated',
+        metadata: { imageGeneration: true },
+      });
+
+      const onToken = jest.fn();
+
+      const result = await chatUseCase.sendMessageWithStreaming(
+        'user-123',
+        { content: 'generate an image of a cat' },
+        onToken
+      );
+
+      expect(result.sessionId).toBeDefined();
+      expect(result.isImageGeneration).toBe(true);
+    });
+  });
 });
 

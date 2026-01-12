@@ -403,6 +403,23 @@ export class ChatApiRepository extends ChatRepository {
    */
   setCurrentSessionId(sessionId) {
     this.currentSessionId = sessionId;
+    console.log('📝 Session ID set to:', sessionId);
+  }
+
+  /**
+   * Limpa a sessão atual (para começar uma nova conversa)
+   */
+  clearCurrentSessionId() {
+    this.currentSessionId = null;
+    console.log('🧹 Session ID cleared - ready for new conversation');
+  }
+
+  /**
+   * Obtém a sessão atual
+   * @returns {string|null}
+   */
+  getCurrentSessionId() {
+    return this.currentSessionId;
   }
 
   /**

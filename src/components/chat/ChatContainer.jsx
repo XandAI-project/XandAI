@@ -13,6 +13,7 @@ import {
   Button,
   Typography
 } from '@mui/material';
+import { Delete as DeleteIcon } from '@mui/icons-material';
 import ChatHeader from './ChatHeader';
 import ChatSidebar from './ChatSidebar';
 import MessageList from './MessageList';
@@ -42,7 +43,8 @@ const ChatContainer = () => {
     loadExternalMessages,
     setSession,
     currentSessionId: chatCurrentSessionId,
-    updateMessageAttachment
+    updateMessageAttachment,
+    chatService
   } = useChat();
 
   // Hook to manage conversation history
@@ -87,16 +89,34 @@ const ChatContainer = () => {
   };
 
   /**
-   * Handles history clearing
+   * Handles current conversation deletion
    */
   const handleClearHistory = async () => {
     try {
-      await clearHistory();
-      // Refresh sessions list (archived sessions will be filtered out)
-      await fetchChatSessions();
+      // If there's a current session, delete it
+      if (currentSessionId) {
+        console.log('🗑️ Deleting current conversation:', currentSessionId);
+        await deleteChatSession(currentSessionId);
+        
+        // Clear UI
+        loadExternalMessages([], null);
+        setSession(null);
+        
+        // Create new session automatically
+        if (chatService && chatService.createNewSession) {
+          chatService.createNewSession();
+        }
+        
+        // Refresh sessions list
+        await fetchChatSessions();
+      } else {
+        // No session active, just clear the UI
+        loadExternalMessages([], null);
+      }
+      
       setClearDialogOpen(false);
     } catch (err) {
-      console.error('Error clearing history:', err);
+      console.error('Error clearing conversation:', err);
     }
   };
 
@@ -161,14 +181,23 @@ const ChatContainer = () => {
    */
   const handleNewChat = async () => {
     try {
-      // Clear current messages in UI
+      console.log('🆕 Starting new conversation...');
+      
+      // Clear messages in UI
       loadExternalMessages([], null);
       
       // Reset session ID (new session will be created on first message)
       setSession(null);
       
+      // Clear session in chat service/repository
+      if (chatService && chatService.createNewSession) {
+        chatService.createNewSession();
+      }
+      
       // Close sidebar
       setSidebarOpen(false);
+      
+      console.log('✅ New conversation ready');
     } catch (err) {
       console.error('Error creating new conversation:', err);
     }
@@ -238,11 +267,26 @@ const ChatContainer = () => {
   };
 
   /**
-   * Handles conversation deletion
+   * Handles conversation deletion from sidebar
    */
   const handleDeleteChat = async (sessionId) => {
     try {
+      console.log('🗑️ Deleting conversation from sidebar:', sessionId);
       await deleteChatSession(sessionId);
+      
+      // If deleted session was the current one, clear UI and start new
+      if (currentSessionId === sessionId) {
+        loadExternalMessages([], null);
+        setSession(null);
+        
+        // Create new session
+        if (chatService && chatService.createNewSession) {
+          chatService.createNewSession();
+        }
+      }
+      
+      // Refresh sessions list
+      await fetchChatSessions();
     } catch (err) {
       console.error('Error deleting conversation:', err);
     }
@@ -345,7 +389,7 @@ const ChatContainer = () => {
         </Paper>
       </Box>
 
-      {/* Confirmation dialog to clear chat */}
+      {/* Confirmation dialog to delete current conversation */}
       <Dialog
         open={clearDialogOpen}
         onClose={handleClearDialogClose}
@@ -353,16 +397,16 @@ const ChatContainer = () => {
         fullWidth
       >
         <DialogTitle>
-          Clear Conversation
+          Delete Conversation
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Are you sure you want to clear the entire conversation? 
+            Are you sure you want to delete this conversation? 
             This action cannot be undone.
           </Typography>
           {messageCount > 0 && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {messageCount} messages will be permanently removed.
+              {messageCount} messages will be permanently deleted.
             </Typography>
           )}
         </DialogContent>
@@ -377,8 +421,9 @@ const ChatContainer = () => {
             onClick={handleClearHistory}
             color="error"
             variant="contained"
+            startIcon={<DeleteIcon />}
           >
-            Clear
+            Delete
           </Button>
         </DialogActions>
       </Dialog>
