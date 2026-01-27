@@ -19,8 +19,10 @@ import ChatSidebar from './ChatSidebar';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import SettingsDialog from '../settings/SettingsDialog';
+import WhatsAppPanel from '../whatsapp/WhatsAppPanel';
 import { useChat } from '../../application/hooks/useChat';
 import { useChatHistory } from '../../application/hooks/useChatHistory';
+import { useAuth } from '../../contexts/AuthContext';
 
 /**
  * Main chat container
@@ -66,8 +68,11 @@ const ChatContainer = () => {
   } = useChatHistory();
 
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [clearMode, setClearMode] = useState('messages'); // 'messages' or 'conversation'
   const [settingsDialogOpen, setSettingsDialogOpen] = useState(false);
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { token } = useAuth();
 
   /**
    * Handles message sending
@@ -89,41 +94,63 @@ const ChatContainer = () => {
   };
 
   /**
-   * Handles current conversation deletion
+   * Handles clearing messages or deleting conversation
    */
   const handleClearHistory = async () => {
     try {
-      // If there's a current session, delete it
-      if (currentSessionId) {
-        console.log('🗑️ Deleting current conversation:', currentSessionId);
-        await deleteChatSession(currentSessionId);
-        
-        // Clear UI
-        loadExternalMessages([], null);
-        setSession(null);
-        
-        // Create new session automatically
-        if (chatService && chatService.createNewSession) {
-          chatService.createNewSession();
+      if (clearMode === 'messages') {
+        // Clear only messages, keep the conversation
+        if (currentSessionId) {
+          console.log('🧹 Clearing messages from conversation:', currentSessionId);
+          
+          // Call backend to clear messages
+          if (chatService && chatService.clearSessionMessages) {
+            await chatService.clearSessionMessages(currentSessionId);
+          }
+          
+          // Clear UI messages but keep session active
+          loadExternalMessages([], currentSessionId);
+          
+          // Refresh sessions list to update preview
+          await fetchChatSessions();
+        } else {
+          // No session active, just clear the UI
+          loadExternalMessages([], null);
         }
-        
-        // Refresh sessions list
-        await fetchChatSessions();
       } else {
-        // No session active, just clear the UI
-        loadExternalMessages([], null);
+        // Delete entire conversation
+        if (currentSessionId) {
+          console.log('🗑️ Deleting current conversation:', currentSessionId);
+          await deleteChatSession(currentSessionId);
+          
+          // Clear UI
+          loadExternalMessages([], null);
+          setSession(null);
+          
+          // Create new session automatically
+          if (chatService && chatService.createNewSession) {
+            chatService.createNewSession();
+          }
+          
+          // Refresh sessions list
+          await fetchChatSessions();
+        } else {
+          // No session active, just clear the UI
+          loadExternalMessages([], null);
+        }
       }
       
       setClearDialogOpen(false);
     } catch (err) {
-      console.error('Error clearing conversation:', err);
+      console.error('Error clearing history:', err);
     }
   };
 
   /**
    * Handles confirmation dialog opening
    */
-  const handleClearDialogOpen = () => {
+  const handleClearDialogOpen = (mode = 'messages') => {
+    setClearMode(mode);
     setClearDialogOpen(true);
   };
 
@@ -361,6 +388,7 @@ const ChatContainer = () => {
             onClearChat={handleClearDialogOpen}
             onRefresh={handleRefresh}
             onSettings={handleOpenSettings}
+            onWhatsApp={() => setWhatsappDialogOpen(true)}
             messageCount={messageCount}
             isTyping={isTyping}
           />
@@ -389,7 +417,7 @@ const ChatContainer = () => {
         </Paper>
       </Box>
 
-      {/* Confirmation dialog to delete current conversation */}
+      {/* Confirmation dialog to clear messages or delete conversation */}
       <Dialog
         open={clearDialogOpen}
         onClose={handleClearDialogClose}
@@ -397,16 +425,18 @@ const ChatContainer = () => {
         fullWidth
       >
         <DialogTitle>
-          Delete Conversation
+          {clearMode === 'messages' ? 'Clear Chat History' : 'Delete Conversation'}
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1">
-            Are you sure you want to delete this conversation? 
-            This action cannot be undone.
+            {clearMode === 'messages' 
+              ? 'Are you sure you want to clear all messages from this conversation? The conversation will be kept but all messages will be removed.'
+              : 'Are you sure you want to delete this entire conversation? This action cannot be undone.'
+            }
           </Typography>
           {messageCount > 0 && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              {messageCount} messages will be permanently deleted.
+              {messageCount} messages will be {clearMode === 'messages' ? 'cleared' : 'permanently deleted'}.
             </Typography>
           )}
         </DialogContent>
@@ -419,11 +449,11 @@ const ChatContainer = () => {
           </Button>
           <Button 
             onClick={handleClearHistory}
-            color="error"
+            color={clearMode === 'messages' ? 'warning' : 'error'}
             variant="contained"
             startIcon={<DeleteIcon />}
           >
-            Delete
+            {clearMode === 'messages' ? 'Clear Messages' : 'Delete Conversation'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -433,6 +463,27 @@ const ChatContainer = () => {
         open={settingsDialogOpen}
         onClose={handleCloseSettings}
       />
+
+      {/* WhatsApp dialog */}
+      <Dialog
+        open={whatsappDialogOpen}
+        onClose={() => setWhatsappDialogOpen(false)}
+        maxWidth="lg"
+        fullWidth
+        fullScreen={isMobile}
+      >
+        <DialogTitle>
+          WhatsApp AI Integration
+        </DialogTitle>
+        <DialogContent>
+          <WhatsAppPanel token={token} />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setWhatsappDialogOpen(false)}>
+            Fechar
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Snackbar for errors */}
       <Snackbar

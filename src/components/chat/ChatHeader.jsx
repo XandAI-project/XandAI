@@ -23,10 +23,12 @@ import {
   Circle as OnlineIcon,
   Refresh as RefreshIcon,
   ClearAll as ClearIcon,
+  Delete as DeleteIcon,
   Settings as SettingsIcon,
   Person as PersonIcon,
   Logout as LogoutIcon,
-  AccountCircle as AccountIcon
+  AccountCircle as AccountIcon,
+  WhatsApp as WhatsAppIcon
 } from '@mui/icons-material';
 import ModelSelector from './ModelSelector';
 import { useAuth } from '../../contexts/AuthContext';
@@ -35,7 +37,7 @@ import { useAuth } from '../../contexts/AuthContext';
  * Chat header component
  * @param {Object} props - Component properties
  * @param {Function} props.onMenuClick - Callback to open menu
- * @param {Function} props.onClearChat - Callback to clear chat
+ * @param {Function} props.onClearChat - Callback to clear chat (receives mode: 'messages' or 'conversation')
  * @param {Function} props.onRefresh - Callback to refresh
  * @param {Function} props.onSettings - Callback to open settings
  * @param {number} props.messageCount - Number of messages
@@ -47,6 +49,7 @@ const ChatHeader = ({
   onClearChat, 
   onRefresh,
   onSettings,
+  onWhatsApp,
   messageCount = 0,
   isTyping = false
 }) => {
@@ -54,6 +57,7 @@ const ChatHeader = ({
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, logout, getFullName, getInitials } = useAuth();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const [clearMenuAnchor, setClearMenuAnchor] = useState(null);
 
   // Bot status
   const botStatus = isTyping ? 'typing...' : 'online';
@@ -88,6 +92,36 @@ const ChatHeader = ({
     handleUserMenuClose();
     // TODO: Implement profile page
     console.log('Open profile');
+  };
+
+  /**
+   * Opens the clear menu
+   */
+  const handleClearMenuOpen = (event) => {
+    setClearMenuAnchor(event.currentTarget);
+  };
+
+  /**
+   * Closes the clear menu
+   */
+  const handleClearMenuClose = () => {
+    setClearMenuAnchor(null);
+  };
+
+  /**
+   * Handles clearing messages only
+   */
+  const handleClearMessages = () => {
+    handleClearMenuClose();
+    onClearChat('messages');
+  };
+
+  /**
+   * Handles deleting entire conversation
+   */
+  const handleDeleteConversation = () => {
+    handleClearMenuClose();
+    onClearChat('conversation');
   };
 
   return (
@@ -187,6 +221,24 @@ const ChatHeader = ({
 
         {/* Header actions */}
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+          {/* WhatsApp button */}
+          {onWhatsApp && (
+            <Tooltip title="WhatsApp Integration">
+              <IconButton
+                color="inherit"
+                onClick={onWhatsApp}
+                size={isMobile ? 'small' : 'medium'}
+                sx={{
+                  '&:hover': {
+                    color: '#25D366', // WhatsApp green color
+                  }
+                }}
+              >
+                <WhatsAppIcon />
+              </IconButton>
+            </Tooltip>
+          )}
+
           {/* Settings button */}
           <Tooltip title="Settings">
             <IconButton
@@ -209,12 +261,12 @@ const ChatHeader = ({
             </IconButton>
           </Tooltip>
 
-          {/* Clear chat button */}
+          {/* Clear chat button with menu */}
           {messageCount > 0 && (
-            <Tooltip title="Clear conversation">
+            <Tooltip title="Clear options">
               <IconButton
                 color="inherit"
-                onClick={onClearChat}
+                onClick={handleClearMenuOpen}
                 size={isMobile ? 'small' : 'medium'}
               >
                 <ClearIcon />
@@ -256,6 +308,47 @@ const ChatHeader = ({
           }}
         />
       )}
+
+      {/* Clear menu */}
+      <Menu
+        anchorEl={clearMenuAnchor}
+        open={Boolean(clearMenuAnchor)}
+        onClose={handleClearMenuClose}
+        PaperProps={{
+          sx: {
+            mt: 1,
+            minWidth: 220,
+            backgroundColor: theme.palette.background.paper,
+            border: `1px solid ${theme.palette.divider}`,
+          }
+        }}
+        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+      >
+        <MenuItem onClick={handleClearMessages}>
+          <ListItemIcon>
+            <ClearIcon fontSize="small" color="warning" />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Clear Messages"
+            secondary="Keep conversation"
+            secondaryTypographyProps={{ variant: 'caption' }}
+          />
+        </MenuItem>
+
+        <Divider />
+
+        <MenuItem onClick={handleDeleteConversation}>
+          <ListItemIcon>
+            <DeleteIcon fontSize="small" color="error" />
+          </ListItemIcon>
+          <ListItemText 
+            primary="Delete Conversation"
+            secondary="Remove permanently"
+            secondaryTypographyProps={{ variant: 'caption' }}
+          />
+        </MenuItem>
+      </Menu>
 
       {/* User menu */}
       <Menu

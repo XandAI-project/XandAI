@@ -149,6 +149,21 @@ export class ChatUseCase {
   }
 
   /**
+   * Limpa todas as mensagens de uma sessão específica (mantém a sessão)
+   */
+  async clearSessionMessages(userId: string, sessionId: string): Promise<void> {
+    const belongsToUser = await this.chatSessionRepository.belongsToUser(sessionId, userId);
+    
+    if (!belongsToUser) {
+      throw new ForbiddenException('Acesso negado à sessão');
+    }
+
+    this.logger.log(`🧹 Clearing all messages from session: ${sessionId}`);
+    await this.chatMessageRepository.deleteBySessionId(sessionId);
+    this.logger.log(`✅ All messages cleared from session: ${sessionId}`);
+  }
+
+  /**
    * Envia uma mensagem e obtém resposta da IA
    */
   async sendMessage(userId: string, sendMessageDto: SendMessageDto): Promise<SendMessageResponseDto> {
@@ -187,14 +202,15 @@ export class ChatUseCase {
       await this.chatSessionRepository.update(session.id, { lastActivityAt: session.lastActivityAt });
     }
 
-    // Cria mensagem do usuário
-    const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
-    const userMessage = await this.chatMessageRepository.create(userMessageData);
-
-    // Busca o histórico de mensagens da sessão para contexto
+    // IMPORTANTE: Busca o histórico ANTES de salvar a nova mensagem do usuário
+    // para evitar duplicação no contexto enviado ao Ollama
     const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
     
-    // Integra com o serviço de IA (Ollama) incluindo histórico
+    // Agora cria e salva a mensagem do usuário DEPOIS de buscar o histórico
+    const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
+    const userMessage = await this.chatMessageRepository.create(userMessageData);
+    
+    // Integra com o serviço de IA (Ollama) incluindo histórico (sem a mensagem atual)
     const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
     
     const assistantMessageData = ChatMessage.createAssistantMessage(
@@ -246,18 +262,21 @@ export class ChatUseCase {
       this.logger.log(`📝 Using existing session: ${session.id}`);
     }
 
-    // Salva mensagem do usuário
-    const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
-    await this.chatMessageRepository.create(userMessageData);
-
     // Check if this is an image generation request (can't be streamed)
     const isImageRequest = this.ollamaService.isImageGenerationRequest(sendMessageDto.content);
     
     if (isImageRequest) {
       this.logger.log('🎨 Image generation detected in streaming endpoint - using non-streaming flow');
       
-      // Handle image generation without streaming
+      // IMPORTANTE: Busca histórico ANTES de salvar a nova mensagem do usuário
+      // para evitar duplicação no contexto enviado ao Ollama
       const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
+      
+      // Agora salva a mensagem do usuário
+      const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
+      await this.chatMessageRepository.create(userMessageData);
+      
+      // Handle image generation without streaming
       const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
       
       const assistantMessageData = ChatMessage.createAssistantMessage(
@@ -281,8 +300,15 @@ export class ChatUseCase {
       };
     }
 
-    // Busca histórico para contexto
+    // IMPORTANTE: Busca histórico ANTES de salvar a nova mensagem do usuário
+    // para evitar duplicação no contexto enviado ao Ollama
     const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
+    
+    // Agora salva a mensagem do usuário DEPOIS de buscar o histórico
+    const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
+    await this.chatMessageRepository.create(userMessageData);
+    
+    // Constrói o contexto sem incluir a mensagem que acabou de ser salva
     const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content);
 
     // Gera resposta com streaming

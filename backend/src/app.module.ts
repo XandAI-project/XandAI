@@ -6,6 +6,7 @@ import { getDatabaseConfig, databaseConfigValidation } from './infrastructure/da
 import { AuthModule } from './presentation/modules/auth.module';
 import { ChatModule } from './presentation/modules/chat.module';
 import { StableDiffusionModule } from './presentation/modules/stable-diffusion.module';
+import { WhatsAppModule } from './presentation/modules/whatsapp.module';
 
 /**
  * Módulo principal da aplicação
@@ -30,6 +31,7 @@ import { StableDiffusionModule } from './presentation/modules/stable-diffusion.m
     AuthModule,
     ChatModule,
     StableDiffusionModule,
+    WhatsAppModule,
   ],
   controllers: [],
   providers: [],

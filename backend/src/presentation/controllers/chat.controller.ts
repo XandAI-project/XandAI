@@ -111,6 +111,18 @@ export class ChatController {
   }
 
   /**
+   * Limpa todas as mensagens de uma sessão (mantém a sessão)
+   */
+  @Delete('sessions/:sessionId/messages')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async clearSessionMessages(
+    @Request() req,
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ): Promise<void> {
+    return await this.chatUseCase.clearSessionMessages(req.user.id, sessionId);
+  }
+
+  /**
    * Envia uma mensagem e obtém resposta da IA
    */
   @Post('messages')

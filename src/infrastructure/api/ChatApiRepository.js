@@ -423,6 +423,35 @@ export class ChatApiRepository extends ChatRepository {
   }
 
   /**
+   * Limpa todas as mensagens de uma sessão específica
+   * @param {string} sessionId - ID da sessão
+   * @returns {Promise<void>}
+   */
+  async clearSessionMessages(sessionId) {
+    try {
+      const token = this.getAuthToken();
+      
+      if (!token) {
+        throw new Error('Token de autenticação não encontrado');
+      }
+
+      const response = await fetch(`${this.baseURL}/chat/sessions/${sessionId}/messages`, {
+        method: 'DELETE',
+        headers: this.getAuthHeaders()
+      });
+
+      if (!response.ok && response.status !== 204) {
+        throw new Error(`Erro ao limpar mensagens: ${response.status}`);
+      }
+
+      console.log(`✅ Mensagens da sessão ${sessionId} foram limpas`);
+    } catch (error) {
+      console.error('Erro ao limpar mensagens da sessão:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Verifica se o backend está disponível
    * @returns {Promise<boolean>}
    */

@@ -184,4 +184,23 @@ export class ChatService {
     
     console.log('✨ New session created - repository session cleared');
   }
+
+  /**
+   * Limpa todas as mensagens de uma sessão específica
+   * @param {string} sessionId - ID da sessão
+   * @returns {Promise<void>}
+   */
+  async clearSessionMessages(sessionId) {
+    try {
+      if (this.chatRepository && typeof this.chatRepository.clearSessionMessages === 'function') {
+        await this.chatRepository.clearSessionMessages(sessionId);
+        console.log(`✅ Session ${sessionId} messages cleared`);
+      } else {
+        console.warn('clearSessionMessages not available in repository');
+      }
+    } catch (error) {
+      console.error('Erro ao limpar mensagens da sessão:', error);
+      throw new Error('Falha ao limpar mensagens. Tente novamente.');
+    }
+  }
 }
