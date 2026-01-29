@@ -1,5 +1,21 @@
 # 🐳 Docker Build Instructions
 
+## ⚠️ Problemas Comuns e Soluções Rápidas
+
+### Erro 1: "Cannot find module 'qrcode'"
+**Solução**: Build sem cache
+```bash
+docker compose build --no-cache backend
+```
+[Detalhes completos abaixo ↓](#problema-erro-cannot-find-module-qrcode)
+
+### Erro 2: "Nest can't resolve dependencies of the JwtAuthGuard"
+**Causa**: WhatsAppModule não importa AuthModule  
+**Solução**: ✅ Já corrigido automaticamente!  
+📖 Ver: [`docs/WHATSAPP_MODULE_FIX.md`](./docs/WHATSAPP_MODULE_FIX.md)
+
+---
+
 ## Problema: Erro "Cannot find module 'qrcode'"
 
 Se você está recebendo o erro:

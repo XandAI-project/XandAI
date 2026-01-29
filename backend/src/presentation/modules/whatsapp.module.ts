@@ -10,6 +10,7 @@ import { WhatsAppConfig } from '../../domain/entities/whatsapp-config.entity';
 import { WhatsAppSessionRepository } from '../../infrastructure/repositories/whatsapp-session.repository';
 import { WhatsAppMessageRepository } from '../../infrastructure/repositories/whatsapp-message.repository';
 import { WhatsAppConfigRepository } from '../../infrastructure/repositories/whatsapp-config.repository';
+import { AuthModule } from './auth.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { WhatsAppConfigRepository } from '../../infrastructure/repositories/what
       WhatsAppMessage,
       WhatsAppConfig,
     ]),
+    AuthModule, // Importa AuthModule para ter acesso ao JwtAuthGuard e JwtService
   ],
   controllers: [WhatsAppController],
   providers: [
