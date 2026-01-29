@@ -2,7 +2,7 @@
 
 ## ✅ Configuração Docker Completa
 
-Todas as variáveis de ambiente estão configuradas no `docker-compose.yml`. **NÃO precisa de arquivos .env**!
+Todas as variáveis de ambiente estão configuradas no arquivo `.env.docker`.
 
 ### Backend:
 - `CORS_ORIGIN=*` → Aceita requisições de qualquer origem
@@ -26,12 +26,16 @@ cd /caminho/para/XandAI
 # 2. Pull das últimas mudanças
 git pull origin main
 
-# 3. Rebuild e restart dos containers
-docker compose down
-docker compose build --no-cache
-docker compose up -d
+# 3. Configure o IP do servidor (se necessário)
+# Edite .env.docker e altere SERVER_IP para o IP correto
+nano .env.docker
 
-# 4. Verifique os logs
+# 4. Rebuild e restart dos containers
+docker compose --env-file .env.docker down
+docker compose --env-file .env.docker build --no-cache
+docker compose --env-file .env.docker up -d
+
+# 5. Verifique os logs
 docker compose logs -f
 ```
 
