@@ -42,10 +42,10 @@ async function bootstrap() {
 
   // Configuração CORS dinâmica
   const corsOrigin = configService.get('CORS_ORIGIN', '*');
-  const isDevelopment = configService.get('NODE_ENV') !== 'production';
+  const acceptAllOrigins = corsOrigin === '*' || corsOrigin === 'true';
   
   app.enableCors({
-    origin: isDevelopment ? true : corsOrigin, // true = aceita qualquer origem em dev
+    origin: acceptAllOrigins ? true : corsOrigin,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
@@ -61,7 +61,7 @@ async function bootstrap() {
   logger.log(`🚀 Aplicação iniciada na porta ${port}`);
   logger.log(`🌍 Environment: ${configService.get('NODE_ENV', 'development')}`);
   logger.log(`📊 Database: ${configService.get('NODE_ENV') === 'production' ? 'PostgreSQL' : 'SQLite'}`);
-  logger.log(`🔒 CORS: ${isDevelopment ? 'Enabled for all origins (dev mode)' : `Restricted to ${corsOrigin}`}`);
+  logger.log(`🔒 CORS: ${acceptAllOrigins ? '✅ ACCEPTS ALL ORIGINS (*)' : `Restricted to ${corsOrigin}`}`);
 }
 
 bootstrap().catch((error) => {
