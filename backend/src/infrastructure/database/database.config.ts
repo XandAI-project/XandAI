@@ -3,6 +3,9 @@ import { ConfigService } from '@nestjs/config';
 import { User } from '@domain/entities/user.entity';
 import { ChatSession } from '@domain/entities/chat-session.entity';
 import { ChatMessage } from '@domain/entities/chat-message.entity';
+import { WhatsAppSession } from '@domain/entities/whatsapp-session.entity';
+import { WhatsAppMessage } from '@domain/entities/whatsapp-message.entity';
+import { WhatsAppConfig } from '@domain/entities/whatsapp-config.entity';
 
 /**
  * Configuração do banco de dados
@@ -19,7 +22,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
       username: configService.get('DB_USERNAME', 'postgres'),
       password: configService.get('DB_PASSWORD', 'password'),
       database: configService.get('DB_NAME', 'xandai'),
-      entities: [User, ChatSession, ChatMessage],
+      entities: [User, ChatSession, ChatMessage, WhatsAppSession, WhatsAppMessage, WhatsAppConfig],
       synchronize: true, // Auto-create tables from entities
       logging: configService.get('DB_LOGGING', 'false') === 'true',
       ssl: configService.get('DB_SSL', 'false') === 'true' ? {
@@ -34,7 +37,7 @@ export const getDatabaseConfig = (configService: ConfigService): TypeOrmModuleOp
     return {
       type: 'sqlite',
       database: configService.get('DB_PATH', 'data/xandai.sqlite'),
-      entities: [User, ChatSession, ChatMessage],
+      entities: [User, ChatSession, ChatMessage, WhatsAppSession, WhatsAppMessage, WhatsAppConfig],
       synchronize: true, // Apenas em desenvolvimento
       logging: configService.get('DB_LOGGING', 'false') === 'true',
       dropSchema: false,
