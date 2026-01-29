@@ -40,16 +40,18 @@ async function bootstrap() {
     }),
   );
 
-  // Configuração CORS
+  // Configuração CORS dinâmica
+  const corsOrigin = configService.get('CORS_ORIGIN', '*');
+  const isDevelopment = configService.get('NODE_ENV') !== 'production';
+  
   app.enableCors({
-    origin: configService.get('CORS_ORIGIN', 'http://localhost:3000'),
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    origin: isDevelopment ? true : corsOrigin, // true = aceita qualquer origem em dev
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
     credentials: true,
+    preflightContinue: false,
+    optionsSuccessStatus: 204,
   });
-
-  // Prefixo global para API
-  app.setGlobalPrefix('api/v1');
 
   // Porta da aplicação
   const port = configService.get<number>('PORT', 3001);
@@ -59,7 +61,7 @@ async function bootstrap() {
   logger.log(`🚀 Aplicação iniciada na porta ${port}`);
   logger.log(`🌍 Environment: ${configService.get('NODE_ENV', 'development')}`);
   logger.log(`📊 Database: ${configService.get('NODE_ENV') === 'production' ? 'PostgreSQL' : 'SQLite'}`);
-  logger.log(`🔒 CORS Origin: ${configService.get('CORS_ORIGIN', 'http://localhost:3000')}`);
+  logger.log(`🔒 CORS: ${isDevelopment ? 'Enabled for all origins (dev mode)' : `Restricted to ${corsOrigin}`}`);
 }
 
 bootstrap().catch((error) => {

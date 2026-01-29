@@ -1,4 +1,11 @@
+// Use environment variable for API URL (supports network access)
+// Default to localhost as fallback
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+
+// Log API URL on service initialization (development only)
+if (process.env.NODE_ENV === 'development') {
+  console.log('📡 WhatsApp Service API URL:', API_URL);
+}
 
 class WhatsAppService {
   constructor() {
