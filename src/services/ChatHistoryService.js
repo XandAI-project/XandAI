@@ -5,10 +5,14 @@ import authService from './AuthService';
  */
 class ChatHistoryService {
   constructor() {
-    // Use relative URL for API - works with nginx proxy
-    this.baseURL = process.env.REACT_APP_API_BASE_URL 
-      ? `${process.env.REACT_APP_API_BASE_URL}/api/v1`
-      : '/api/v1';
+    // Use environment variable for API URL - supports network access
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    this.baseURL = `${API_BASE}/api/v1`;
+    
+    // Log API URL in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📜 Chat History Service API URL:', this.baseURL);
+    }
   }
 
   /**
