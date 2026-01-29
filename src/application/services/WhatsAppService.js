@@ -1,6 +1,7 @@
 // Use environment variable for API URL (supports network access)
 // Default to localhost as fallback
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+const API_URL = `${API_BASE}/api/v1`;
 
 // Log API URL on service initialization (development only)
 if (process.env.NODE_ENV === 'development') {

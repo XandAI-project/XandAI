@@ -9,9 +9,15 @@ import { Message } from '../../domain/entities/Message.js';
 export class ChatApiRepository extends ChatRepository {
   constructor() {
     super();
-    // Use relative URL for API - works with nginx proxy
-    this.baseURL = '/api/v1';
+    // Use environment variable for API URL - supports network access
+    const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:3001';
+    this.baseURL = `${API_BASE}/api/v1`;
     this.tokenKey = 'xandai_auth_token';
+    
+    // Log API URL in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('💬 Chat API Repository URL:', this.baseURL);
+    }
   }
 
   /**
