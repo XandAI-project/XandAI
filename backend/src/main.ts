@@ -28,6 +28,9 @@ async function bootstrap() {
     index: false,
   });
 
+  // Prefixo global para todas as rotas
+  app.setGlobalPrefix('api/v1');
+
   // Configuração global de validação
   app.useGlobalPipes(
     new ValidationPipe({
@@ -59,6 +62,7 @@ async function bootstrap() {
   logger.log(`🌍 Environment: ${configService.get('NODE_ENV', 'development')}`);
   logger.log(`📊 Database: ${configService.get('NODE_ENV') === 'production' ? 'PostgreSQL' : 'SQLite'}`);
   logger.log(`🔓 CORS: ✅ ACEITA TODAS AS ORIGENS (SEM RESTRIÇÕES)`);
+  logger.log(`📡 API Routes: /api/v1/*`);
 }
 
 bootstrap().catch((error) => {
