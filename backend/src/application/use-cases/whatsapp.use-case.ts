@@ -139,10 +139,10 @@ export class WhatsAppUseCase {
     const messageCount = await this.messageRepository.findBySessionId(session.id, 1, 1);
 
     return {
-      isConnected: session.isActive(),
+      isConnected: session.isConnected(),
       status: session.status,
       phoneNumber: session.phoneNumber,
-      lastActiveAt: session.lastActiveAt,
+      lastActiveAt: session.lastActivityAt,
       autoReplyEnabled: session.autoReplyEnabled,
       isPaused: session.isPaused,
       messageCount: messageCount.total
@@ -303,18 +303,15 @@ export class WhatsAppUseCase {
         this.logger.log(`🚫 Mensagem filtrada de ${contactName}`);
         
         // Salvar como ignorada
-        const ignoredMessage = WhatsAppMessage.createIncoming({
-          sessionId: session.id,
-          whatsappMessageId: waMessage.id._serialized,
+        const ignoredMessage = WhatsAppMessage.createIncoming(
+          session.id,
           chatId,
-          contactName,
-          contactNumber,
-          content: waMessage.body,
-          type: waMessage.type as any
-        });
+          waMessage.id._serialized,
+          waMessage.body,
+          contactName
+        );
         
-        const saved = await this.messageRepository.create(ignoredMessage);
-        await this.messageRepository.update(saved.id, { status: 'ignored' });
+        await this.messageRepository.create(ignoredMessage);
         
         return;
       }
@@ -332,20 +329,15 @@ export class WhatsAppUseCase {
       }
 
       // Salvar mensagem recebida
-      const incomingMessageData = WhatsAppMessage.createIncoming({
-        sessionId: session.id,
-        whatsappMessageId: waMessage.id._serialized,
+      const incomingMessageData = WhatsAppMessage.createIncoming(
+        session.id,
         chatId,
-        contactName,
-        contactNumber,
-        content: waMessage.body,
-        type: waMessage.type as any
-      });
+        waMessage.id._serialized,
+        waMessage.body,
+        contactName
+      );
 
       const savedIncoming = await this.messageRepository.create(incomingMessageData);
-      
-      // Marcar como processando
-      await this.messageRepository.update(savedIncoming.id, { status: 'processing' });
 
       // Buscar histórico de conversa
       const conversationHistory = await this.messageRepository.findByChatId(
@@ -383,22 +375,24 @@ export class WhatsAppUseCase {
       }
 
       // Salvar mensagem enviada
-      const outgoingMessageData = WhatsAppMessage.createOutgoing({
-        sessionId: session.id,
-        whatsappMessageId: sendResult.messageId,
+      const outgoingMessageData = WhatsAppMessage.createOutgoing(
+        session.id,
         chatId,
-        content: aiResponse.content,
-        inReplyToId: waMessage.id._serialized,
-        metadata: aiResponse.metadata
+        sendResult.messageId,
+        aiResponse.content,
+        savedIncoming.id,
+        aiResponse.metadata
+      );
+
+      await this.messageRepository.create(outgoingMessageData);
+
+      // Marcar mensagem recebida como respondida
+      await this.messageRepository.update(savedIncoming.id, { 
+        wasRepliedTo: true 
       });
 
-      const savedOutgoing = await this.messageRepository.create(outgoingMessageData);
-
-      // Atualizar mensagem recebida como processada
-      await this.messageRepository.markAsProcessed(savedIncoming.id, savedOutgoing.id);
-
       // Atualizar atividade da sessão
-      await this.sessionRepository.update(sessionId, { lastActiveAt: new Date() });
+      await this.sessionRepository.update(sessionId, { lastActivityAt: new Date() });
 
       this.logger.log(`✅ Resposta enviada com sucesso para ${contactName}`);
     } catch (error) {
@@ -558,7 +552,7 @@ export class WhatsAppUseCase {
       autoReplyEnabled: session.autoReplyEnabled,
       isPaused: session.isPaused,
       persona: session.persona,
-      lastActiveAt: session.lastActiveAt,
+      lastActiveAt: session.lastActivityAt,
       connectedAt: session.connectedAt,
       disconnectedAt: session.disconnectedAt,
       metadata: session.metadata,
@@ -570,22 +564,22 @@ export class WhatsAppUseCase {
   private mapMessageToDto(message: WhatsAppMessage): WhatsAppMessageResponseDto {
     return {
       id: message.id,
-      sessionId: message.sessionId,
-      whatsappMessageId: message.whatsappMessageId,
+      sessionId: message.whatsappSessionId,
+      whatsappMessageId: message.messageId,
       chatId: message.chatId,
-      contactName: message.contactName,
-      contactNumber: message.contactNumber,
+      contactName: message.senderName,
+      contactNumber: message.chatId?.replace('@c.us', ''),
       direction: message.direction,
-      type: message.type,
+      type: 'text',
       content: message.content,
-      status: message.status,
+      status: 'sent',
       isAIGenerated: message.isAIGenerated,
-      wasProcessed: message.wasProcessed,
-      aiResponseId: message.aiResponseId,
-      inReplyToId: message.inReplyToId,
+      wasProcessed: message.wasRepliedTo,
+      aiResponseId: message.replyToMessageId,
+      inReplyToId: message.replyToMessageId,
       receivedAt: message.receivedAt,
       sentAt: message.sentAt,
-      processedAt: message.processedAt,
+      processedAt: message.receivedAt || message.sentAt,
       metadata: message.metadata,
       createdAt: message.createdAt,
       updatedAt: message.updatedAt

@@ -1,5 +1,9 @@
 import { IsString, IsBoolean, IsOptional, IsNumber, IsArray, IsObject, IsEnum, Min, Max } from 'class-validator';
-import { WhatsAppSessionStatus, WhatsAppMessageDirection, WhatsAppMessageStatus } from '../../domain/entities/whatsapp-session.entity';
+import { WhatsAppSessionStatus } from '../../domain/entities/whatsapp-session.entity';
+
+// Tipos para mensagens
+export type WhatsAppMessageDirection = 'incoming' | 'outgoing';
+export type WhatsAppMessageStatus = 'pending' | 'processing' | 'sent' | 'delivered' | 'failed' | 'ignored';
 
 /**
  * DTO para criar/iniciar sessão WhatsApp

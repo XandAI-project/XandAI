@@ -80,7 +80,7 @@ export class WhatsAppSessionRepository implements IWhatsAppSessionRepository {
       status: 'connected' as any,
       phoneNumber,
       connectedAt: new Date(),
-      lastActiveAt: new Date(),
+      lastActivityAt: new Date(),
       qrCode: null,
       updatedAt: new Date()
     });

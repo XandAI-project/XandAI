@@ -204,14 +204,20 @@ export class WhatsAppService implements OnModuleInit, OnModuleDestroy {
     });
 
     // Erro de autenticação
-    client.on('auth_failure', (error) => {
+    client.on('auth_failure', (error: any) => {
       this.logger.error(`❌ Falha na autenticação para sessão ${sessionId}: ${error}`);
       
       if (config.onAuthFailure) {
-        config.onAuthFailure(error?.message || 'Falha na autenticação');
+        const errorMessage = typeof error === 'string' ? error : (error?.message || 'Falha na autenticação');
+        config.onAuthFailure(errorMessage);
       }
       
       emitter?.emit('auth_failure', error);
+    });
+
+    // Change state
+    client.on('change_state', (state) => {
+      this.logger.debug(`State changed to: ${state}`);
     });
 
     // Loading screen

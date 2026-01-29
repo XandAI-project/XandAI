@@ -22,7 +22,7 @@ export class WhatsAppMessageRepository implements IWhatsAppMessageRepository {
 
   async findByWhatsappMessageId(whatsappMessageId: string): Promise<WhatsAppMessage | null> {
     return await this.repository.findOne({ 
-      where: { whatsappMessageId } 
+      where: { messageId: whatsappMessageId } 
     });
   }
 
@@ -32,7 +32,7 @@ export class WhatsAppMessageRepository implements IWhatsAppMessageRepository {
     limit: number = 50
   ): Promise<{ messages: WhatsAppMessage[]; total: number }> {
     const [messages, total] = await this.repository.findAndCount({
-      where: { sessionId },
+      where: { whatsappSessionId: sessionId },
       order: { createdAt: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
@@ -47,7 +47,7 @@ export class WhatsAppMessageRepository implements IWhatsAppMessageRepository {
     limit: number = 20
   ): Promise<WhatsAppMessage[]> {
     return await this.repository.find({
-      where: { chatId, sessionId },
+      where: { chatId, whatsappSessionId: sessionId },
       order: { createdAt: 'DESC' },
       take: limit,
     });
@@ -56,10 +56,9 @@ export class WhatsAppMessageRepository implements IWhatsAppMessageRepository {
   async findPendingMessages(sessionId: string): Promise<WhatsAppMessage[]> {
     return await this.repository.find({
       where: { 
-        sessionId,
-        status: 'pending' as any,
+        whatsappSessionId: sessionId,
         direction: 'incoming' as any,
-        wasProcessed: false
+        wasRepliedTo: false
       },
       order: { createdAt: 'ASC' },
     });
@@ -76,10 +75,7 @@ export class WhatsAppMessageRepository implements IWhatsAppMessageRepository {
 
   async markAsProcessed(id: string, aiResponseId: string): Promise<void> {
     await this.repository.update(id, {
-      wasProcessed: true,
-      aiResponseId,
-      processedAt: new Date(),
-      status: 'delivered' as any,
+      wasRepliedTo: true,
       updatedAt: new Date()
     });
   }
@@ -91,7 +87,7 @@ export class WhatsAppMessageRepository implements IWhatsAppMessageRepository {
     return await this.repository.count({
       where: {
         chatId,
-        sessionId,
+        whatsappSessionId: sessionId,
         direction: 'outgoing' as any,
         createdAt: MoreThanOrEqual(timeThreshold)
       }
