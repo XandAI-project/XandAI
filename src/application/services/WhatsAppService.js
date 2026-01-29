@@ -10,17 +10,18 @@ if (process.env.NODE_ENV === 'development') {
 
 class WhatsAppService {
   constructor() {
-    this.token = null;
+    this.tokenKey = 'xandai_auth_token';
   }
 
-  setToken(token) {
-    this.token = token;
+  getToken() {
+    return localStorage.getItem(this.tokenKey);
   }
 
   getHeaders() {
+    const token = this.getToken();
     return {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${this.token}`,
+      Authorization: `Bearer ${token}`,
     };
   }
 
