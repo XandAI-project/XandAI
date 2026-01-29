@@ -66,12 +66,16 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - REACT_APP_API_URL=http://192.168.0.5:3001
     container_name: xandai-frontend
     restart: unless-stopped
     ports:
       - "3000:80"
     depends_on:
       - backend
+    environment:
+      - REACT_APP_API_URL=http://192.168.0.5:3001
     networks:
       - xandai-network
 
