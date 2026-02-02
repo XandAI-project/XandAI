@@ -409,24 +409,36 @@ export class WhatsAppUseCase {
     config: WhatsAppConfig
   ): Promise<{ content: string; metadata: any }> {
     try {
-      // Construir contexto da conversa
-      let context = config.getPersonaInstructions() + '\n\n';
-      context += 'Conversation history:\n';
+      // Construir contexto da conversa no formato de mensagens do Ollama
+      const messages: Array<{ role: string; content: string }> = [];
+      
+      // Adicionar instruções de persona como mensagem de sistema (se houver)
+      const personaInstructions = config.getPersonaInstructions();
+      if (personaInstructions) {
+        messages.push({
+          role: 'system',
+          content: personaInstructions
+        });
+      }
 
-      // Adicionar histórico
+      // Adicionar histórico de conversas
       conversationHistory.forEach(msg => {
-        if (msg.direction === 'incoming') {
-          context += `Contact: ${msg.content}\n`;
-        } else {
-          context += `You: ${msg.content}\n`;
-        }
+        messages.push({
+          role: msg.direction === 'incoming' ? 'user' : 'assistant',
+          content: msg.content
+        });
       });
 
-      context += `\nContact: ${userMessage}\n`;
-      context += `You:`;
+      // Adicionar mensagem atual do usuário
+      messages.push({
+        role: 'user',
+        content: userMessage
+      });
+
+      this.logger.log(`📱 WhatsApp: Built context with ${messages.length} messages`);
 
       // Gerar resposta
-      const response = await this.ollamaService.generateResponse(context, {
+      const response = await this.ollamaService.generateResponse(messages, {
         model: config.defaultModel,
         temperature: config.temperature,
         maxTokens: config.maxTokens

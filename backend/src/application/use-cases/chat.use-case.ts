@@ -167,6 +167,11 @@ export class ChatUseCase {
    * Envia uma mensagem e obtém resposta da IA
    */
   async sendMessage(userId: string, sendMessageDto: SendMessageDto): Promise<SendMessageResponseDto> {
+    // Busca o usuário para obter o system prompt e configurações LLM
+    const user = await this.userRepository.findById(userId);
+    const systemPrompt = user?.systemPrompt;
+    const userLlmConfig = user?.llmConfig || {};
+    
     let session: ChatSession;
 
     // Se não foi fornecido sessionId, cria uma nova sessão
@@ -206,12 +211,16 @@ export class ChatUseCase {
     // para evitar duplicação no contexto enviado ao Ollama
     const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
     
+    this.logger.log(`📚 Found ${messageHistory.messages.length} messages in history for session ${session.id}`);
+    
     // Agora cria e salva a mensagem do usuário DEPOIS de buscar o histórico
     const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
     const userMessage = await this.chatMessageRepository.create(userMessageData);
     
+    this.logger.log(`💬 User message saved: "${sendMessageDto.content.substring(0, 50)}..."`);
+    
     // Integra com o serviço de IA (Ollama) incluindo histórico (sem a mensagem atual)
-    const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
+    const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages, systemPrompt, userLlmConfig);
     
     const assistantMessageData = ChatMessage.createAssistantMessage(
       aiResponse.content, 
@@ -242,6 +251,11 @@ export class ChatUseCase {
     sendMessageDto: SendMessageDto,
     onToken: (token: string, fullText: string) => void
   ): Promise<{ sessionId: string; isImageGeneration?: boolean; content?: string; attachments?: any[] }> {
+    // Busca o usuário para obter o system prompt e configurações LLM
+    const user = await this.userRepository.findById(userId);
+    const systemPrompt = user?.systemPrompt;
+    const userLlmConfig = user?.llmConfig || {};
+    
     let session: ChatSession;
 
     // Se não foi fornecido sessionId, cria uma nova sessão
@@ -277,7 +291,7 @@ export class ChatUseCase {
       await this.chatMessageRepository.create(userMessageData);
       
       // Handle image generation without streaming
-      const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages);
+      const aiResponse = await this.generateAIResponse(sendMessageDto.content, sendMessageDto, messageHistory.messages, systemPrompt, userLlmConfig);
       
       const assistantMessageData = ChatMessage.createAssistantMessage(
         aiResponse.content,
@@ -304,19 +318,30 @@ export class ChatUseCase {
     // para evitar duplicação no contexto enviado ao Ollama
     const messageHistory = await this.chatMessageRepository.findBySessionId(session.id, 1, 50);
     
+    this.logger.log(`📚 [STREAMING] Found ${messageHistory.messages.length} messages in history for session ${session.id}`);
+    
     // Agora salva a mensagem do usuário DEPOIS de buscar o histórico
     const userMessageData = ChatMessage.createUserMessage(sendMessageDto.content, session.id);
     await this.chatMessageRepository.create(userMessageData);
     
+    this.logger.log(`💬 [STREAMING] User message saved: "${sendMessageDto.content.substring(0, 50)}..."`);
+    
     // Constrói o contexto sem incluir a mensagem que acabou de ser salva
-    const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content);
+    const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content, systemPrompt);
 
     // Gera resposta com streaming
     const aiResponse = await this.ollamaService.generateResponseWithStreaming(
       context,
       {
         model: sendMessageDto.model,
-        temperature: sendMessageDto.temperature,
+        temperature: userLlmConfig.temperature ?? sendMessageDto.temperature,
+        maxTokens: userLlmConfig.maxTokens ?? sendMessageDto.maxTokens,
+        topK: userLlmConfig.topK,
+        topP: userLlmConfig.topP,
+        frequencyPenalty: userLlmConfig.frequencyPenalty,
+        presencePenalty: userLlmConfig.presencePenalty,
+        repeatPenalty: userLlmConfig.repeatPenalty,
+        seed: userLlmConfig.seed,
         ollamaConfig: sendMessageDto.metadata?.ollamaConfig,
       },
       onToken
@@ -395,7 +420,9 @@ export class ChatUseCase {
   private async generateAIResponse(
     userMessage: string, 
     options: SendMessageDto,
-    messageHistory: ChatMessage[] = []
+    messageHistory: ChatMessage[] = [],
+    systemPrompt?: string,
+    userLlmConfig: any = {}
   ): Promise<{ content: string; metadata: any; attachments?: any[] }> {
     try {
       // Check if this is an image generation request
@@ -407,13 +434,19 @@ export class ChatUseCase {
 
       // Regular text response
       // Prepara o contexto da conversa incluindo histórico
-      const context = this.buildConversationContext(messageHistory, userMessage);
+      const context = this.buildConversationContext(messageHistory, userMessage, systemPrompt);
       
-      // Chama o serviço Ollama com configuração dinâmica
+      // Chama o serviço Ollama com configuração dinâmica (user config tem prioridade)
       const response = await this.ollamaService.generateResponse(context, {
         model: options.model,
-        temperature: options.temperature,
-        maxTokens: options.maxTokens,
+        temperature: userLlmConfig.temperature ?? options.temperature,
+        maxTokens: userLlmConfig.maxTokens ?? options.maxTokens,
+        topK: userLlmConfig.topK,
+        topP: userLlmConfig.topP,
+        frequencyPenalty: userLlmConfig.frequencyPenalty,
+        presencePenalty: userLlmConfig.presencePenalty,
+        repeatPenalty: userLlmConfig.repeatPenalty,
+        seed: userLlmConfig.seed,
         ollamaConfig: options.metadata?.ollamaConfig,
         ...options.metadata
       });
@@ -574,10 +607,19 @@ export class ChatUseCase {
   }
 
   /**
-   * Builds conversation context including history
+   * Builds conversation context including history as an array of messages for Ollama API
    */
-  private buildConversationContext(messageHistory: ChatMessage[], currentMessage: string): string {
-    let context = '';
+  private buildConversationContext(messageHistory: ChatMessage[], currentMessage: string, systemPrompt?: string): Array<{ role: string; content: string }> {
+    const messages: Array<{ role: string; content: string }> = [];
+    
+    // Add system prompt if provided
+    if (systemPrompt && systemPrompt.trim()) {
+      messages.push({
+        role: 'system',
+        content: systemPrompt
+      });
+      this.logger.log(`📋 Added system prompt to context`);
+    }
     
     // If there's history, include previous messages (excluding current to avoid duplication)
     if (messageHistory.length > 0) {
@@ -591,23 +633,27 @@ export class ChatUseCase {
         !(msg.role === 'user' && msg.content === currentMessage)
       );
       
-      // Include only the last 10 messages to avoid context overload
-      const recentMessages = filteredHistory.slice(-10);
+      // Include only the last 20 messages to avoid context overload (10 exchanges)
+      const recentMessages = filteredHistory.slice(-20);
       
-      // Build context in natural conversation format
+      // Build messages array in Ollama format
       recentMessages.forEach(msg => {
-        if (msg.role === 'user') {
-          context += `User: ${msg.content}\n\n`;
-        } else {
-          context += `Assistant: ${msg.content}\n\n`;
-        }
+        messages.push({
+          role: msg.role === 'user' ? 'user' : 'assistant',
+          content: msg.content
+        });
       });
     }
     
     // Add the current message
-    context += `User: ${currentMessage}\n\nRespond directly without any prefixes:`;
+    messages.push({
+      role: 'user',
+      content: currentMessage
+    });
     
-    return context;
+    this.logger.log(`📝 Built context with ${messages.length} messages (${messages.filter(m => m.role === 'user').length} user, ${messages.filter(m => m.role === 'assistant').length} assistant, ${systemPrompt ? '1 system' : '0 system'})`);
+    
+    return messages;
   }
 
   /**
