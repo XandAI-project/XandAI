@@ -10,6 +10,9 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
+# Install Python and build dependencies for native modules (sqlite3)
+RUN apk add --no-cache python3 make g++
+
 # Install all dependencies (including dev for build)
 RUN npm ci
 
@@ -33,8 +36,15 @@ RUN addgroup -g 1001 -S nodejs && \
 # Copy package files
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm ci --only=production && npm cache clean --force
+# Install Python and build dependencies for native modules (sqlite3)
+# Then install production dependencies and clean up build tools
+RUN apk add --no-cache --virtual .build-deps \
+    python3 \
+    make \
+    g++ \
+    && npm ci --omit=dev \
+    && npm cache clean --force \
+    && apk del .build-deps
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
