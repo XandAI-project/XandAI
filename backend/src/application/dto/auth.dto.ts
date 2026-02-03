@@ -1,25 +1,25 @@
-import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsIn } from 'class-validator';
+﻿import { IsEmail, IsString, MinLength, MaxLength, IsOptional, IsIn } from 'class-validator';
 
 /**
- * DTO para registro de usuário
+ * DTO para registro de usuÃ¡rio
  */
 export class RegisterUserDto {
-  @IsEmail({}, { message: 'Email deve ter um formato válido' })
+  @IsEmail({}, { message: 'Email deve ter um formato vÃ¡lido' })
   email: string;
 
-  @IsString({ message: 'Primeiro nome é obrigatório' })
+  @IsString({ message: 'Primeiro nome Ã© obrigatÃ³rio' })
   @MinLength(2, { message: 'Primeiro nome deve ter pelo menos 2 caracteres' })
-  @MaxLength(50, { message: 'Primeiro nome deve ter no máximo 50 caracteres' })
+  @MaxLength(50, { message: 'Primeiro nome deve ter no mÃ¡ximo 50 caracteres' })
   firstName: string;
 
-  @IsString({ message: 'Sobrenome é obrigatório' })
+  @IsString({ message: 'Sobrenome Ã© obrigatÃ³rio' })
   @MinLength(2, { message: 'Sobrenome deve ter pelo menos 2 caracteres' })
-  @MaxLength(50, { message: 'Sobrenome deve ter no máximo 50 caracteres' })
+  @MaxLength(50, { message: 'Sobrenome deve ter no mÃ¡ximo 50 caracteres' })
   lastName: string;
 
-  @IsString({ message: 'Senha é obrigatória' })
+  @IsString({ message: 'Senha Ã© obrigatÃ³ria' })
   @MinLength(8, { message: 'Senha deve ter pelo menos 8 caracteres' })
-  @MaxLength(100, { message: 'Senha deve ter no máximo 100 caracteres' })
+  @MaxLength(100, { message: 'Senha deve ter no mÃ¡ximo 100 caracteres' })
   password: string;
 
   @IsOptional()
@@ -33,18 +33,18 @@ export class RegisterUserDto {
 }
 
 /**
- * DTO para login de usuário
+ * DTO para login de usuÃ¡rio
  */
 export class LoginUserDto {
-  @IsEmail({}, { message: 'Email deve ter um formato válido' })
+  @IsEmail({}, { message: 'Email deve ter um formato vÃ¡lido' })
   email: string;
 
-  @IsString({ message: 'Senha é obrigatória' })
+  @IsString({ message: 'Senha Ã© obrigatÃ³ria' })
   password: string;
 }
 
 /**
- * DTO para atualização de perfil
+ * DTO para atualizaÃ§Ã£o de perfil
  */
 export class UpdateProfileDto {
   @IsOptional()
@@ -71,23 +71,39 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsString()
   avatar?: string;
+
+  @IsOptional()
+  @IsString()
+  systemPrompt?: string;
+
+  @IsOptional()
+  llmConfig?: {
+    temperature?: number;
+    maxTokens?: number;
+    topK?: number;
+    topP?: number;
+    frequencyPenalty?: number;
+    presencePenalty?: number;
+    repeatPenalty?: number;
+    seed?: number;
+  };
 }
 
 /**
- * DTO para alteração de senha
+ * DTO para alteraÃ§Ã£o de senha
  */
 export class ChangePasswordDto {
-  @IsString({ message: 'Senha atual é obrigatória' })
+  @IsString({ message: 'Senha atual Ã© obrigatÃ³ria' })
   currentPassword: string;
 
-  @IsString({ message: 'Nova senha é obrigatória' })
+  @IsString({ message: 'Nova senha Ã© obrigatÃ³ria' })
   @MinLength(8, { message: 'Nova senha deve ter pelo menos 8 caracteres' })
-  @MaxLength(100, { message: 'Nova senha deve ter no máximo 100 caracteres' })
+  @MaxLength(100, { message: 'Nova senha deve ter no mÃ¡ximo 100 caracteres' })
   newPassword: string;
 }
 
 /**
- * DTO de resposta para autenticação
+ * DTO de resposta para autenticaÃ§Ã£o
  */
 export class AuthResponseDto {
   user: {
@@ -99,6 +115,17 @@ export class AuthResponseDto {
     theme: string;
     preferredLanguage?: string;
     avatar?: string;
+    systemPrompt?: string;
+    llmConfig?: {
+      temperature?: number;
+      maxTokens?: number;
+      topK?: number;
+      topP?: number;
+      frequencyPenalty?: number;
+      presencePenalty?: number;
+      repeatPenalty?: number;
+      seed?: number;
+    };
     createdAt: Date;
   };
   

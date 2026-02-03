@@ -1,8 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
+﻿import { Column, Entity, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, OneToMany } from 'typeorm';
 import { ChatSession } from './chat-session.entity';
 
 /**
- * Entidade User - Representa um usuário do sistema
+ * Entidade User - Representa um usuÃ¡rio do sistema
  */
 @Entity('users')
 export class User {
@@ -36,6 +36,21 @@ export class User {
   @Column({ type: 'text', nullable: true })
   avatar?: string;
 
+  @Column({ type: 'text', nullable: true })
+  systemPrompt?: string;
+
+  @Column({ type: 'json', nullable: true })
+  llmConfig?: {
+    temperature?: number;          // 0.0 - 2.0+
+    maxTokens?: number;            // Max length of response
+    topK?: number;                 // Top-K sampling
+    topP?: number;                 // Top-P (nucleus) sampling (0.0 - 1.0)
+    frequencyPenalty?: number;     // 0.0 - 2.0
+    presencePenalty?: number;      // 0.0 - 2.0
+    repeatPenalty?: number;        // Ollama specific
+    seed?: number;                 // For reproducibility
+  };
+
   @Column({ type: 'timestamp', nullable: true })
   lastLoginAt?: Date;
 
@@ -49,7 +64,7 @@ export class User {
   @OneToMany(() => ChatSession, (chatSession) => chatSession.user)
   chatSessions: ChatSession[];
 
-  // Métodos de negócio
+  // MÃ©todos de negÃ³cio
   getFullName(): string {
     return `${this.firstName} ${this.lastName}`;
   }
@@ -62,7 +77,7 @@ export class User {
     this.lastLoginAt = new Date();
   }
 
-  // Método para serialização (remove senha)
+  // MÃ©todo para serializaÃ§Ã£o (remove senha)
   toJSON() {
     const { password, ...result } = this;
     return result;
