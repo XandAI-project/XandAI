@@ -44,11 +44,14 @@ import {
   Speed as SpeedIcon,
   Info as InfoIcon,
   Image as ImageIcon,
-  SmartToy as SmartToyIcon
+  SmartToy as SmartToyIcon,
+  Psychology as PsychologyIcon,
+  Tune as TuneIcon
 } from '@mui/icons-material';
 import { useOllama } from '../../application/hooks/useOllama';
 import { useStableDiffusion } from '../../application/hooks/useStableDiffusion';
 import { StableDiffusionConfig } from '../../domain/entities/StableDiffusionConfig';
+import authService from '../../services/AuthService';
 
 /**
  * OLLAMA and Stable Diffusion settings dialog
@@ -116,6 +119,27 @@ const SettingsDialog = ({ open, onClose }) => {
   const [isSdTesting, setIsSdTesting] = useState(false);
   const [hasSdUnsavedChanges, setHasSdUnsavedChanges] = useState(false);
 
+  // System Prompt states
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [originalSystemPrompt, setOriginalSystemPrompt] = useState('');
+  const [isSavingPrompt, setIsSavingPrompt] = useState(false);
+  const [promptSaveSuccess, setPromptSaveSuccess] = useState(false);
+
+  // LLM Config states
+  const [llmConfig, setLlmConfig] = useState({
+    temperature: 0.7,
+    maxTokens: 2048,
+    topK: 40,
+    topP: 0.9,
+    frequencyPenalty: 0,
+    presencePenalty: 0,
+    repeatPenalty: 1.1,
+    seed: undefined
+  });
+  const [originalLlmConfig, setOriginalLlmConfig] = useState({});
+  const [isSavingLlmConfig, setIsSavingLlmConfig] = useState(false);
+  const [llmConfigSaveSuccess, setLlmConfigSaveSuccess] = useState(false);
+
   // Sincroniza configuração local com a global - Ollama
   useEffect(() => {
     if (config) {
@@ -146,6 +170,38 @@ const SettingsDialog = ({ open, onClose }) => {
       setHasSdUnsavedChanges(false);
     }
   }, [sdConfig]);
+
+  // Load user system prompt and LLM config
+  useEffect(() => {
+    const loadUserSettings = async () => {
+      try {
+        const profile = await authService.getProfile();
+        const prompt = profile.systemPrompt || '';
+        setSystemPrompt(prompt);
+        setOriginalSystemPrompt(prompt);
+
+        const userLlmConfig = profile.llmConfig || {};
+        const loadedConfig = {
+          temperature: userLlmConfig.temperature ?? 0.7,
+          maxTokens: userLlmConfig.maxTokens ?? 2048,
+          topK: userLlmConfig.topK ?? 40,
+          topP: userLlmConfig.topP ?? 0.9,
+          frequencyPenalty: userLlmConfig.frequencyPenalty ?? 0,
+          presencePenalty: userLlmConfig.presencePenalty ?? 0,
+          repeatPenalty: userLlmConfig.repeatPenalty ?? 1.1,
+          seed: userLlmConfig.seed
+        };
+        setLlmConfig(loadedConfig);
+        setOriginalLlmConfig(loadedConfig);
+      } catch (error) {
+        console.error('Error loading user settings:', error);
+      }
+    };
+
+    if (open) {
+      loadUserSettings();
+    }
+  }, [open]);
 
   /**
    * Manipula mudanças nos campos de configuração
@@ -296,6 +352,93 @@ const SettingsDialog = ({ open, onClose }) => {
       console.error('Erro ao atualizar modelos:', error);
     }
   };
+
+  /**
+   * Salva o system prompt
+   */
+  const handleSaveSystemPrompt = async () => {
+    setIsSavingPrompt(true);
+    setPromptSaveSuccess(false);
+    
+    try {
+      await authService.updateProfile({ systemPrompt });
+      setOriginalSystemPrompt(systemPrompt);
+      setPromptSaveSuccess(true);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setPromptSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error saving system prompt:', error);
+      alert('Erro ao salvar system prompt');
+    } finally {
+      setIsSavingPrompt(false);
+    }
+  };
+
+  /**
+   * Reseta o system prompt para o padrão
+   */
+  const handleResetSystemPrompt = () => {
+    setSystemPrompt('');
+  };
+
+  /**
+   * Verifica se há mudanças não salvas no system prompt
+   */
+  const hasPromptUnsavedChanges = systemPrompt !== originalSystemPrompt;
+
+  /**
+   * Salva a configuração LLM
+   */
+  const handleSaveLlmConfig = async () => {
+    setIsSavingLlmConfig(true);
+    setLlmConfigSaveSuccess(false);
+    
+    try {
+      await authService.updateProfile({ llmConfig });
+      setOriginalLlmConfig(llmConfig);
+      setLlmConfigSaveSuccess(true);
+      
+      // Clear success message after 3 seconds
+      setTimeout(() => setLlmConfigSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error saving LLM config:', error);
+      alert('Erro ao salvar configuração LLM');
+    } finally {
+      setIsSavingLlmConfig(false);
+    }
+  };
+
+  /**
+   * Reseta a configuração LLM para os padrões
+   */
+  const handleResetLlmConfig = () => {
+    setLlmConfig({
+      temperature: 0.7,
+      maxTokens: 2048,
+      topK: 40,
+      topP: 0.9,
+      frequencyPenalty: 0,
+      presencePenalty: 0,
+      repeatPenalty: 1.1,
+      seed: undefined
+    });
+  };
+
+  /**
+   * Atualiza um campo da configuração LLM
+   */
+  const handleLlmConfigChange = (field, value) => {
+    setLlmConfig(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  /**
+   * Verifica se há mudanças não salvas na config LLM
+   */
+  const hasLlmConfigUnsavedChanges = JSON.stringify(llmConfig) !== JSON.stringify(originalLlmConfig);
 
   /**
    * Renderiza o status da conexão
@@ -630,7 +773,17 @@ const SettingsDialog = ({ open, onClose }) => {
       <DialogContent dividers>
         {/* Tabs for different settings */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)}>
+          <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)} variant="scrollable" scrollButtons="auto">
+            <Tab 
+              icon={<PsychologyIcon />} 
+              label="System Prompt" 
+              iconPosition="start"
+            />
+            <Tab 
+              icon={<TuneIcon />} 
+              label="LLM Parameters" 
+              iconPosition="start"
+            />
             <Tab 
               icon={<SmartToyIcon />} 
               label="Ollama" 
@@ -644,8 +797,401 @@ const SettingsDialog = ({ open, onClose }) => {
           </Tabs>
         </Box>
 
-        {/* Tab Panel - Ollama */}
+        {/* Tab Panel - System Prompt */}
         {currentTab === 0 && (
+          <Box>
+            <Paper elevation={1} sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Custom System Prompt
+              </Typography>
+              
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <Typography variant="body2">
+                  O system prompt define como a IA deve se comportar. Deixe vazio para usar o comportamento padrão.
+                </Typography>
+              </Alert>
+
+              <TextField
+                fullWidth
+                multiline
+                rows={12}
+                label="System Prompt"
+                value={systemPrompt}
+                onChange={(e) => setSystemPrompt(e.target.value)}
+                placeholder="Exemplo: Você é um assistente prestativo e amigável. Sempre responda de forma clara e concisa..."
+                helperText="Este prompt será enviado em todas as conversas para definir o comportamento da IA"
+                sx={{ mb: 2 }}
+              />
+
+              <Box display="flex" gap={2} alignItems="center">
+                <Button
+                  variant="contained"
+                  onClick={handleSaveSystemPrompt}
+                  disabled={!hasPromptUnsavedChanges || isSavingPrompt}
+                  startIcon={isSavingPrompt ? <CircularProgress size={16} /> : <CheckIcon />}
+                >
+                  {isSavingPrompt ? 'Salvando...' : 'Salvar System Prompt'}
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  onClick={handleResetSystemPrompt}
+                  disabled={!systemPrompt}
+                  startIcon={<DeleteIcon />}
+                >
+                  Limpar
+                </Button>
+
+                {promptSaveSuccess && (
+                  <Chip
+                    icon={<CheckIcon />}
+                    label="Salvo com sucesso!"
+                    color="success"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+
+              <Divider sx={{ my: 3 }} />
+
+              <Typography variant="subtitle2" gutterBottom>
+                💡 Exemplos de System Prompts:
+              </Typography>
+              
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setSystemPrompt('Você é um assistente prestativo e amigável. Sempre responda de forma clara e concisa em português.')}
+                >
+                  Assistente Amigável
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setSystemPrompt('Você é um especialista técnico. Forneça respostas detalhadas e precisas, com exemplos de código quando apropriado.')}
+                >
+                  Especialista Técnico
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setSystemPrompt('Você é um professor paciente. Explique conceitos complexos de forma simples e didática, usando analogias quando possível.')}
+                >
+                  Professor
+                </Button>
+              </Box>
+            </Paper>
+          </Box>
+        )}
+
+        {/* Tab Panel - LLM Parameters */}
+        {currentTab === 1 && (
+          <Box>
+            <Paper elevation={1} sx={{ p: 3 }}>
+              <Typography variant="h6" gutterBottom>
+                Advanced LLM Parameters
+              </Typography>
+              
+              <Alert severity="info" sx={{ mb: 3 }}>
+                <Typography variant="body2">
+                  Ajuste fino dos parâmetros de geração da IA. Use valores padrão se não tiver certeza.
+                </Typography>
+              </Alert>
+
+              <Grid container spacing={3}>
+                {/* Temperature */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Temperature: {llmConfig.temperature}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.temperature}
+                    onChange={(e, value) => handleLlmConfigChange('temperature', value)}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    marks={[
+                      { value: 0, label: '0 (Determinístico)' },
+                      { value: 0.7, label: '0.7 (Balanceado)' },
+                      { value: 1.5, label: '1.5 (Criativo)' },
+                      { value: 2, label: '2 (Muito criativo)' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Controla a aleatoriedade. Valores baixos são mais focados e previsíveis.
+                  </Typography>
+                </Grid>
+
+                {/* Max Tokens */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Max Tokens: {llmConfig.maxTokens}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.maxTokens}
+                    onChange={(e, value) => handleLlmConfigChange('maxTokens', value)}
+                    min={256}
+                    max={8192}
+                    step={256}
+                    marks={[
+                      { value: 512, label: '512' },
+                      { value: 2048, label: '2K' },
+                      { value: 4096, label: '4K' },
+                      { value: 8192, label: '8K' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Comprimento máximo da resposta gerada.
+                  </Typography>
+                </Grid>
+
+                {/* Top-K */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Top-K Sampling: {llmConfig.topK}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.topK}
+                    onChange={(e, value) => handleLlmConfigChange('topK', value)}
+                    min={1}
+                    max={100}
+                    step={1}
+                    marks={[
+                      { value: 1, label: '1' },
+                      { value: 40, label: '40 (Padrão)' },
+                      { value: 100, label: '100' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Limita a seleção aos K tokens mais prováveis.
+                  </Typography>
+                </Grid>
+
+                {/* Top-P */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Top-P (Nucleus): {llmConfig.topP}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.topP}
+                    onChange={(e, value) => handleLlmConfigChange('topP', value)}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    marks={[
+                      { value: 0.5, label: '0.5' },
+                      { value: 0.9, label: '0.9 (Padrão)' },
+                      { value: 1, label: '1.0' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Probabilidade acumulada para seleção dinâmica de vocabulário.
+                  </Typography>
+                </Grid>
+
+                {/* Frequency Penalty */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Frequency Penalty: {llmConfig.frequencyPenalty}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.frequencyPenalty}
+                    onChange={(e, value) => handleLlmConfigChange('frequencyPenalty', value)}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    marks={[
+                      { value: 0, label: '0 (Sem)' },
+                      { value: 1, label: '1' },
+                      { value: 2, label: '2 (Máx)' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Penaliza tokens repetidos baseado na frequência.
+                  </Typography>
+                </Grid>
+
+                {/* Presence Penalty */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Presence Penalty: {llmConfig.presencePenalty}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.presencePenalty}
+                    onChange={(e, value) => handleLlmConfigChange('presencePenalty', value)}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    marks={[
+                      { value: 0, label: '0 (Sem)' },
+                      { value: 1, label: '1' },
+                      { value: 2, label: '2 (Máx)' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Penaliza tokens já usados, incentiva novos tópicos.
+                  </Typography>
+                </Grid>
+
+                {/* Repeat Penalty */}
+                <Grid item xs={12} md={6}>
+                  <Typography gutterBottom>
+                    Repeat Penalty (Ollama): {llmConfig.repeatPenalty}
+                  </Typography>
+                  <Slider
+                    value={llmConfig.repeatPenalty}
+                    onChange={(e, value) => handleLlmConfigChange('repeatPenalty', value)}
+                    min={0.5}
+                    max={2}
+                    step={0.1}
+                    marks={[
+                      { value: 0.5, label: '0.5' },
+                      { value: 1.1, label: '1.1 (Padrão)' },
+                      { value: 2, label: '2.0' }
+                    ]}
+                    valueLabelDisplay="auto"
+                  />
+                  <Typography variant="caption" color="text.secondary">
+                    Penalidade de repetição específica do Ollama.
+                  </Typography>
+                </Grid>
+
+                {/* Seed */}
+                <Grid item xs={12} md={6}>
+                  <TextField
+                    fullWidth
+                    label="Seed (Opcional)"
+                    type="number"
+                    value={llmConfig.seed || ''}
+                    onChange={(e) => handleLlmConfigChange('seed', e.target.value ? parseInt(e.target.value) : undefined)}
+                    helperText="Para resultados reproduzíveis. Deixe vazio para aleatório."
+                    placeholder="Ex: 42"
+                  />
+                </Grid>
+              </Grid>
+
+              <Divider sx={{ my: 3 }} />
+
+              <Box display="flex" gap={2} alignItems="center">
+                <Button
+                  variant="contained"
+                  onClick={handleSaveLlmConfig}
+                  disabled={!hasLlmConfigUnsavedChanges || isSavingLlmConfig}
+                  startIcon={isSavingLlmConfig ? <CircularProgress size={16} /> : <CheckIcon />}
+                >
+                  {isSavingLlmConfig ? 'Salvando...' : 'Salvar Configuração'}
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  onClick={handleResetLlmConfig}
+                  startIcon={<RefreshIcon />}
+                >
+                  Restaurar Padrões
+                </Button>
+
+                {llmConfigSaveSuccess && (
+                  <Chip
+                    icon={<CheckIcon />}
+                    label="Salvo com sucesso!"
+                    color="success"
+                    variant="outlined"
+                  />
+                )}
+              </Box>
+
+              <Divider sx={{ my: 3 }} />
+
+              <Typography variant="subtitle2" gutterBottom>
+                📚 Presets Recomendados:
+              </Typography>
+              
+              <Box sx={{ mt: 2 }}>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setLlmConfig({
+                    temperature: 0.3,
+                    maxTokens: 2048,
+                    topK: 20,
+                    topP: 0.8,
+                    frequencyPenalty: 0,
+                    presencePenalty: 0,
+                    repeatPenalty: 1.1,
+                    seed: undefined
+                  })}
+                >
+                  🎯 Preciso (Factual)
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setLlmConfig({
+                    temperature: 0.7,
+                    maxTokens: 2048,
+                    topK: 40,
+                    topP: 0.9,
+                    frequencyPenalty: 0,
+                    presencePenalty: 0,
+                    repeatPenalty: 1.1,
+                    seed: undefined
+                  })}
+                >
+                  ⚖️ Balanceado
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setLlmConfig({
+                    temperature: 1.2,
+                    maxTokens: 3072,
+                    topK: 60,
+                    topP: 0.95,
+                    frequencyPenalty: 0.3,
+                    presencePenalty: 0.3,
+                    repeatPenalty: 1.2,
+                    seed: undefined
+                  })}
+                >
+                  🎨 Criativo
+                </Button>
+                <Button
+                  size="small"
+                  variant="outlined"
+                  sx={{ mr: 1, mb: 1 }}
+                  onClick={() => setLlmConfig({
+                    temperature: 0.5,
+                    maxTokens: 4096,
+                    topK: 30,
+                    topP: 0.85,
+                    frequencyPenalty: 0.5,
+                    presencePenalty: 0.2,
+                    repeatPenalty: 1.3,
+                    seed: undefined
+                  })}
+                >
+                  💻 Código
+                </Button>
+              </Box>
+            </Paper>
+          </Box>
+        )}
+
+        {/* Tab Panel - Ollama */}
+        {currentTab === 2 && (
           <Box>
             {error && (
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -748,7 +1294,7 @@ const SettingsDialog = ({ open, onClose }) => {
         )}
 
         {/* Tab Panel - Stable Diffusion */}
-        {currentTab === 1 && (
+        {currentTab === 3 && (
           <Box>
             {sdError && (
               <Alert severity="error" sx={{ mb: 2 }}>
