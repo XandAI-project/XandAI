@@ -29,7 +29,9 @@ import {
   Select,
   FormControl,
   InputLabel,
-  Slider
+  Slider,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Close as CloseIcon,
@@ -61,6 +63,10 @@ import authService from '../../services/AuthService';
  * @returns {JSX.Element}
  */
 const SettingsDialog = ({ open, onClose }) => {
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
   const {
     config,
     models,
@@ -752,8 +758,12 @@ const SettingsDialog = ({ open, onClose }) => {
       onClose={onClose}
       maxWidth="md"
       fullWidth
+      fullScreen={isMobile}
       PaperProps={{
-        sx: { minHeight: '70vh' }
+        sx: { 
+          minHeight: isMobile ? '100vh' : '70vh',
+          maxHeight: isMobile ? '100vh' : '90vh'
+        }
       }}
     >
       <DialogTitle>
@@ -773,25 +783,37 @@ const SettingsDialog = ({ open, onClose }) => {
       <DialogContent dividers>
         {/* Tabs for different settings */}
         <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
-          <Tabs value={currentTab} onChange={(e, newValue) => setCurrentTab(newValue)} variant="scrollable" scrollButtons="auto">
+          <Tabs 
+            value={currentTab} 
+            onChange={(e, newValue) => setCurrentTab(newValue)} 
+            variant="scrollable" 
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTab-root': {
+                minWidth: isMobile ? 60 : 120,
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                padding: isMobile ? '8px 12px' : '12px 16px'
+              }
+            }}
+          >
             <Tab 
-              icon={<PsychologyIcon />} 
-              label="System Prompt" 
+              icon={<PsychologyIcon fontSize={isMobile ? "small" : "medium"} />} 
+              label={isMobile ? "" : "System Prompt"}
               iconPosition="start"
             />
             <Tab 
-              icon={<TuneIcon />} 
-              label="LLM Parameters" 
+              icon={<TuneIcon fontSize={isMobile ? "small" : "medium"} />} 
+              label={isMobile ? "" : "LLM Parameters"}
               iconPosition="start"
             />
             <Tab 
-              icon={<SmartToyIcon />} 
-              label="Ollama" 
+              icon={<SmartToyIcon fontSize={isMobile ? "small" : "medium"} />} 
+              label={isMobile ? "" : "Ollama"}
               iconPosition="start"
             />
             <Tab 
-              icon={<ImageIcon />} 
-              label="Stable Diffusion" 
+              icon={<ImageIcon fontSize={isMobile ? "small" : "medium"} />} 
+              label={isMobile ? "" : "Stable Diffusion"}
               iconPosition="start"
             />
           </Tabs>
@@ -800,7 +822,7 @@ const SettingsDialog = ({ open, onClose }) => {
         {/* Tab Panel - System Prompt */}
         {currentTab === 0 && (
           <Box>
-            <Paper elevation={1} sx={{ p: 3 }}>
+            <Paper elevation={1} sx={{ p: isMobile ? 2 : 3 }}>
               <Typography variant="h6" gutterBottom>
                 Custom System Prompt
               </Typography>
@@ -814,7 +836,7 @@ const SettingsDialog = ({ open, onClose }) => {
               <TextField
                 fullWidth
                 multiline
-                rows={12}
+                rows={isMobile ? 8 : 12}
                 label="System Prompt"
                 value={systemPrompt}
                 onChange={(e) => setSystemPrompt(e.target.value)}
@@ -823,12 +845,18 @@ const SettingsDialog = ({ open, onClose }) => {
                 sx={{ mb: 2 }}
               />
 
-              <Box display="flex" gap={2} alignItems="center">
+              <Box 
+                display="flex" 
+                gap={2} 
+                alignItems={isMobile ? "stretch" : "center"}
+                flexDirection={isMobile ? "column" : "row"}
+              >
                 <Button
                   variant="contained"
                   onClick={handleSaveSystemPrompt}
                   disabled={!hasPromptUnsavedChanges || isSavingPrompt}
                   startIcon={isSavingPrompt ? <CircularProgress size={16} /> : <CheckIcon />}
+                  fullWidth={isMobile}
                 >
                   {isSavingPrompt ? 'Salvando...' : 'Salvar System Prompt'}
                 </Button>
@@ -838,6 +866,7 @@ const SettingsDialog = ({ open, onClose }) => {
                   onClick={handleResetSystemPrompt}
                   disabled={!systemPrompt}
                   startIcon={<DeleteIcon />}
+                  fullWidth={isMobile}
                 >
                   Limpar
                 </Button>
@@ -848,6 +877,7 @@ const SettingsDialog = ({ open, onClose }) => {
                     label="Salvo com sucesso!"
                     color="success"
                     variant="outlined"
+                    sx={{ width: isMobile ? '100%' : 'auto' }}
                   />
                 )}
               </Box>
@@ -858,27 +888,27 @@ const SettingsDialog = ({ open, onClose }) => {
                 💡 Exemplos de System Prompts:
               </Typography>
               
-              <Box sx={{ mt: 2 }}>
+              <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 <Button
-                  size="small"
+                  size={isMobile ? "small" : "small"}
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setSystemPrompt('Você é um assistente prestativo e amigável. Sempre responda de forma clara e concisa em português.')}
                 >
                   Assistente Amigável
                 </Button>
                 <Button
-                  size="small"
+                  size={isMobile ? "small" : "small"}
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setSystemPrompt('Você é um especialista técnico. Forneça respostas detalhadas e precisas, com exemplos de código quando apropriado.')}
                 >
                   Especialista Técnico
                 </Button>
                 <Button
-                  size="small"
+                  size={isMobile ? "small" : "small"}
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setSystemPrompt('Você é um professor paciente. Explique conceitos complexos de forma simples e didática, usando analogias quando possível.')}
                 >
                   Professor
@@ -891,7 +921,7 @@ const SettingsDialog = ({ open, onClose }) => {
         {/* Tab Panel - LLM Parameters */}
         {currentTab === 1 && (
           <Box>
-            <Paper elevation={1} sx={{ p: 3 }}>
+            <Paper elevation={1} sx={{ p: isMobile ? 2 : 3 }}>
               <Typography variant="h6" gutterBottom>
                 Advanced LLM Parameters
               </Typography>
@@ -902,7 +932,7 @@ const SettingsDialog = ({ open, onClose }) => {
                 </Typography>
               </Alert>
 
-              <Grid container spacing={3}>
+              <Grid container spacing={isMobile ? 2 : 3}>
                 {/* Temperature */}
                 <Grid item xs={12} md={6}>
                   <Typography gutterBottom>
@@ -914,7 +944,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={0}
                     max={2}
                     step={0.1}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 0, label: '0' },
+                      { value: 0.7, label: '0.7' },
+                      { value: 2, label: '2' }
+                    ] : [
                       { value: 0, label: '0 (Determinístico)' },
                       { value: 0.7, label: '0.7 (Balanceado)' },
                       { value: 1.5, label: '1.5 (Criativo)' },
@@ -938,7 +972,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={256}
                     max={8192}
                     step={256}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 512, label: '512' },
+                      { value: 2048, label: '2K' },
+                      { value: 8192, label: '8K' }
+                    ] : [
                       { value: 512, label: '512' },
                       { value: 2048, label: '2K' },
                       { value: 4096, label: '4K' },
@@ -962,7 +1000,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={1}
                     max={100}
                     step={1}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 1, label: '1' },
+                      { value: 40, label: '40' },
+                      { value: 100, label: '100' }
+                    ] : [
                       { value: 1, label: '1' },
                       { value: 40, label: '40 (Padrão)' },
                       { value: 100, label: '100' }
@@ -985,7 +1027,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={0}
                     max={1}
                     step={0.05}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 0.5, label: '0.5' },
+                      { value: 0.9, label: '0.9' },
+                      { value: 1, label: '1.0' }
+                    ] : [
                       { value: 0.5, label: '0.5' },
                       { value: 0.9, label: '0.9 (Padrão)' },
                       { value: 1, label: '1.0' }
@@ -1008,7 +1054,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={0}
                     max={2}
                     step={0.1}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 0, label: '0' },
+                      { value: 1, label: '1' },
+                      { value: 2, label: '2' }
+                    ] : [
                       { value: 0, label: '0 (Sem)' },
                       { value: 1, label: '1' },
                       { value: 2, label: '2 (Máx)' }
@@ -1031,7 +1081,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={0}
                     max={2}
                     step={0.1}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 0, label: '0' },
+                      { value: 1, label: '1' },
+                      { value: 2, label: '2' }
+                    ] : [
                       { value: 0, label: '0 (Sem)' },
                       { value: 1, label: '1' },
                       { value: 2, label: '2 (Máx)' }
@@ -1054,7 +1108,11 @@ const SettingsDialog = ({ open, onClose }) => {
                     min={0.5}
                     max={2}
                     step={0.1}
-                    marks={[
+                    marks={isMobile ? [
+                      { value: 0.5, label: '0.5' },
+                      { value: 1.1, label: '1.1' },
+                      { value: 2, label: '2.0' }
+                    ] : [
                       { value: 0.5, label: '0.5' },
                       { value: 1.1, label: '1.1 (Padrão)' },
                       { value: 2, label: '2.0' }
@@ -1082,12 +1140,18 @@ const SettingsDialog = ({ open, onClose }) => {
 
               <Divider sx={{ my: 3 }} />
 
-              <Box display="flex" gap={2} alignItems="center">
+              <Box 
+                display="flex" 
+                gap={2} 
+                alignItems={isMobile ? "stretch" : "center"}
+                flexDirection={isMobile ? "column" : "row"}
+              >
                 <Button
                   variant="contained"
                   onClick={handleSaveLlmConfig}
                   disabled={!hasLlmConfigUnsavedChanges || isSavingLlmConfig}
                   startIcon={isSavingLlmConfig ? <CircularProgress size={16} /> : <CheckIcon />}
+                  fullWidth={isMobile}
                 >
                   {isSavingLlmConfig ? 'Salvando...' : 'Salvar Configuração'}
                 </Button>
@@ -1096,6 +1160,7 @@ const SettingsDialog = ({ open, onClose }) => {
                   variant="outlined"
                   onClick={handleResetLlmConfig}
                   startIcon={<RefreshIcon />}
+                  fullWidth={isMobile}
                 >
                   Restaurar Padrões
                 </Button>
@@ -1106,6 +1171,7 @@ const SettingsDialog = ({ open, onClose }) => {
                     label="Salvo com sucesso!"
                     color="success"
                     variant="outlined"
+                    sx={{ width: isMobile ? '100%' : 'auto' }}
                   />
                 )}
               </Box>
@@ -1116,11 +1182,11 @@ const SettingsDialog = ({ open, onClose }) => {
                 📚 Presets Recomendados:
               </Typography>
               
-              <Box sx={{ mt: 2 }}>
+              <Box sx={{ mt: 2, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
                 <Button
                   size="small"
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setLlmConfig({
                     temperature: 0.3,
                     maxTokens: 2048,
@@ -1137,7 +1203,7 @@ const SettingsDialog = ({ open, onClose }) => {
                 <Button
                   size="small"
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setLlmConfig({
                     temperature: 0.7,
                     maxTokens: 2048,
@@ -1154,7 +1220,7 @@ const SettingsDialog = ({ open, onClose }) => {
                 <Button
                   size="small"
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setLlmConfig({
                     temperature: 1.2,
                     maxTokens: 3072,
@@ -1171,7 +1237,7 @@ const SettingsDialog = ({ open, onClose }) => {
                 <Button
                   size="small"
                   variant="outlined"
-                  sx={{ mr: 1, mb: 1 }}
+                  fullWidth={isMobile}
                   onClick={() => setLlmConfig({
                     temperature: 0.5,
                     maxTokens: 4096,
