@@ -180,17 +180,23 @@ Title:`;
 
   /**
    * Gera uma resposta com streaming usando o Ollama API
-   * @param prompt - Prompt completo incluindo contexto
+   * @param messages - Array de mensagens no formato Ollama (ou string para compatibilidade)
    * @param options - Opções para a geração
    * @param onToken - Callback chamado para cada token recebido
    * @returns Promise com a resposta completa
    */
   async generateResponseWithStreaming(
-    prompt: string,
+    messages: Array<{ role: string; content: string }> | string,
     options: {
       model?: string;
       temperature?: number;
       maxTokens?: number;
+      topK?: number;
+      topP?: number;
+      frequencyPenalty?: number;
+      presencePenalty?: number;
+      repeatPenalty?: number;
+      seed?: number;
       ollamaConfig?: {
         baseUrl?: string;
         timeout?: number;
@@ -213,6 +219,10 @@ Title:`;
       const timeout = options.ollamaConfig?.timeout || this.dynamicTimeout || 300000;
       const model = options.model || this.defaultModel;
       
+      // Convert string to messages array for compatibility
+      const messagesArray = typeof messages === 'string' 
+        ? [{ role: 'user', content: messages }]
+        : messages;
       this.logger.log(`🌊 ========== OLLAMA STREAMING REQUEST ==========`);
       this.logger.log(`🤖 Model: ${model}`);
       this.logger.log(`🔗 URL: ${baseUrl}`);
@@ -292,16 +302,22 @@ Title:`;
 
   /**
    * Gera uma resposta usando o Ollama API
-   * @param prompt - Prompt completo incluindo contexto
+   * @param messages - Array de mensagens no formato Ollama (ou string para compatibilidade)
    * @param options - Opções para a geração
    * @returns Promise com a resposta gerada
    */
   async generateResponse(
-    prompt: string, 
+    messages: Array<{ role: string; content: string }> | string, 
     options: {
       model?: string;
       temperature?: number;
       maxTokens?: number;
+      topK?: number;
+      topP?: number;
+      frequencyPenalty?: number;
+      presencePenalty?: number;
+      repeatPenalty?: number;
+      seed?: number;
       ollamaConfig?: {
         baseUrl?: string;
         timeout?: number;
@@ -331,6 +347,10 @@ Title:`;
       const timeout = options.ollamaConfig?.timeout || this.dynamicTimeout || 300000;
       const model = options.model || this.defaultModel;
       
+      // Convert string to messages array for compatibility
+      const messagesArray = typeof messages === 'string' 
+        ? [{ role: 'user', content: messages }]
+        : messages;
       this.logger.log(`🤖 ========== OLLAMA REQUEST ==========`);
       this.logger.log(`🤖 Model requested: ${options.model || '(not specified)'}`);
       this.logger.log(`🤖 Default model: ${this.defaultModel}`);
