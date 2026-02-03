@@ -230,11 +230,17 @@ Title:`;
 
       const chatRequestBody = {
         model: model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: messagesArray,
         stream: true, // Enable streaming
         options: {
           temperature: options.temperature || 0.7,
           num_predict: options.maxTokens || 2048,
+          ...(options.topK && { top_k: options.topK }),
+          ...(options.topP && { top_p: options.topP }),
+          ...(options.frequencyPenalty && { frequency_penalty: options.frequencyPenalty }),
+          ...(options.presencePenalty && { presence_penalty: options.presencePenalty }),
+          ...(options.repeatPenalty && { repeat_penalty: options.repeatPenalty }),
+          ...(options.seed !== undefined && { seed: options.seed }),
         },
       };
 
@@ -369,15 +375,17 @@ Title:`;
       try {
         const chatRequestBody = {
           model: model,
-          messages: [
-            { role: 'user', content: prompt }
-          ],
+          messages: messagesArray,
           stream: false,
           options: {
             temperature: options.temperature || 0.7,
             num_predict: options.maxTokens || 2048,
-            top_p: 0.9,
-            top_k: 40,
+            ...(options.topK && { top_k: options.topK }),
+            ...(options.topP && { top_p: options.topP }),
+            ...(options.frequencyPenalty && { frequency_penalty: options.frequencyPenalty }),
+            ...(options.presencePenalty && { presence_penalty: options.presencePenalty }),
+            ...(options.repeatPenalty && { repeat_penalty: options.repeatPenalty }),
+            ...(options.seed !== undefined && { seed: options.seed }),
           },
         };
 
@@ -401,15 +409,24 @@ Title:`;
         // Fallback to /api/generate
         this.logger.log(`⚠️ /api/chat failed, falling back to /api/generate with model: ${model}...`);
         
+        // Convert messages array to single prompt string for /api/generate
+        const promptString = messagesArray
+          .map(msg => `${msg.role === 'system' ? 'System: ' : msg.role === 'user' ? 'User: ' : 'Assistant: '}${msg.content}`)
+          .join('\n\n');
+        
         const generateRequestBody = {
           model: model,
-          prompt: prompt,
+          prompt: promptString,
           stream: false,
           options: {
             temperature: options.temperature || 0.7,
             num_predict: options.maxTokens || 2048,
-            top_p: 0.9,
-            top_k: 40,
+            ...(options.topK && { top_k: options.topK }),
+            ...(options.topP && { top_p: options.topP }),
+            ...(options.frequencyPenalty && { frequency_penalty: options.frequencyPenalty }),
+            ...(options.presencePenalty && { presence_penalty: options.presencePenalty }),
+            ...(options.repeatPenalty && { repeat_penalty: options.repeatPenalty }),
+            ...(options.seed !== undefined && { seed: options.seed }),
           },
         };
 
