@@ -290,13 +290,15 @@ Title:`;
       }
 
       const processingTime = Date.now() - startTime;
-      this.logger.log(`✅ Streaming completed in ${processingTime}ms, ${totalTokens} tokens`);
+      const tokensPerSecond = processingTime > 0 ? (totalTokens / (processingTime / 1000)).toFixed(2) : '0';
+      this.logger.log(`✅ Streaming completed in ${processingTime}ms, ${totalTokens} tokens (${tokensPerSecond} tokens/s)`);
 
       return {
         content: fullContent,
         model: model,
         tokens: totalTokens,
         processingTime,
+        tokensPerSecond: parseFloat(tokensPerSecond),
       };
 
     } catch (error) {
@@ -480,11 +482,17 @@ Title:`;
         }
       }
 
+      const tokens = data.eval_count || data.prompt_eval_count || 0;
+      const tokensPerSecond = processingTime > 0 ? parseFloat((tokens / (processingTime / 1000)).toFixed(2)) : 0;
+      
+      this.logger.log(`📊 Tokens: ${tokens}, Time: ${processingTime}ms, Speed: ${tokensPerSecond} tokens/s`);
+
       return {
         content: cleanContent,
         model: model,
-        tokens: data.eval_count || data.prompt_eval_count || 0,
+        tokens,
         processingTime,
+        tokensPerSecond,
       };
 
     } catch (error) {

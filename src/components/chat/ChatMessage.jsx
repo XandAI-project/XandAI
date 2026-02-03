@@ -13,7 +13,9 @@ import {
 import {
   Person as PersonIcon,
   SmartToy as BotIcon,
-  MoreHoriz as TypingIcon
+  MoreHoriz as TypingIcon,
+  Speed as SpeedIcon,
+  Timer as TimerIcon
 } from '@mui/icons-material';
 import MarkdownRenderer from '../common/MarkdownRenderer';
 import GenerateImageButton from './GenerateImageButton';
@@ -198,13 +200,14 @@ const ChatMessage = ({ message, showAvatar = true, onImageGenerated }) => {
               {/* Informações da mensagem */}
               <Box sx={{ 
                 display: 'flex', 
+                flexDirection: isMobile ? 'column' : 'row',
                 justifyContent: 'space-between', 
-                alignItems: 'center',
+                alignItems: isMobile ? 'flex-start' : 'center',
                 mt: 1,
                 gap: 1
               }}>
                 {/* Nome do remetente e botão de imagem */}
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
                   <Chip
                     label={isUser ? 'Você' : 'XandAI'}
                     size="small"
@@ -225,6 +228,46 @@ const ChatMessage = ({ message, showAvatar = true, onImageGenerated }) => {
                       compact={true}
                       onImageGenerated={onImageGenerated}
                     />
+                  )}
+
+                  {/* Métricas de performance (apenas para mensagens do assistente) */}
+                  {!isUser && message.metadata && !isStreaming && (
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                      {message.metadata.tokensPerSecond && message.metadata.tokensPerSecond > 0 && (
+                        <Chip
+                          icon={<SpeedIcon sx={{ fontSize: 12 }} />}
+                          label={`${message.metadata.tokensPerSecond.toFixed(1)} t/s`}
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.7rem',
+                            borderColor: theme.palette.success.main,
+                            color: theme.palette.success.main,
+                            '& .MuiChip-icon': {
+                              color: theme.palette.success.main,
+                            }
+                          }}
+                        />
+                      )}
+                      {message.metadata.processingTime && message.metadata.processingTime > 0 && (
+                        <Chip
+                          icon={<TimerIcon sx={{ fontSize: 12 }} />}
+                          label={`${(message.metadata.processingTime / 1000).toFixed(2)}s`}
+                          size="small"
+                          variant="outlined"
+                          sx={{
+                            height: 20,
+                            fontSize: '0.7rem',
+                            borderColor: theme.palette.info.main,
+                            color: theme.palette.info.main,
+                            '& .MuiChip-icon': {
+                              color: theme.palette.info.main,
+                            }
+                          }}
+                        />
+                      )}
+                    </Box>
                   )}
                 </Box>
 

@@ -351,7 +351,12 @@ export class ChatUseCase {
     const assistantMessageData = ChatMessage.createAssistantMessage(
       aiResponse.content,
       session.id,
-      { model: aiResponse.model, tokens: aiResponse.tokens }
+      { 
+        model: aiResponse.model, 
+        tokens: aiResponse.tokens,
+        processingTime: aiResponse.processingTime,
+        tokensPerSecond: aiResponse.tokensPerSecond
+      }
     );
     await this.chatMessageRepository.create(assistantMessageData);
 
@@ -458,6 +463,7 @@ export class ChatUseCase {
           temperature: options.temperature || 0.7,
           tokens: response.tokens || 0,
           processingTime: response.processingTime || 0,
+          tokensPerSecond: response.tokensPerSecond || 0,
           usedHistory: messageHistory.length > 0
         }
       };
