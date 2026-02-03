@@ -204,7 +204,7 @@ Title:`;
       };
     } = {},
     onToken: (token: string, fullText: string) => void
-  ): Promise<{ content: string; model: string; tokens: number; processingTime: number }> {
+  ): Promise<{ content: string; model: string; tokens: number; processingTime: number; tokensPerSecond: number }> {
     const startTime = Date.now();
     
     try {
@@ -338,6 +338,7 @@ Title:`;
     model: string;
     tokens: number;
     processingTime: number;
+    tokensPerSecond: number;
   }> {
     const startTime = Date.now();
     
