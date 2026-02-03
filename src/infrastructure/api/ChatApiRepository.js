@@ -112,6 +112,7 @@ export class ChatApiRepository extends ChatRepository {
         let fullResponse = '';
         let attachments = null;
         let sessionId = null;
+        let metadata = null;
         let buffer = ''; // Buffer for incomplete chunks
 
         while (true) {
@@ -158,6 +159,11 @@ export class ChatApiRepository extends ChatRepository {
                     this.currentSessionId = data.sessionId;
                     console.log('📝 Final session ID stored:', data.sessionId);
                   }
+                  // Capture metadata (tokens, processingTime, tokensPerSecond)
+                  if (data.metadata) {
+                    metadata = data.metadata;
+                    console.log('📊 Metrics received:', metadata);
+                  }
                   onToken('', fullResponse, true);
                 }
               } catch (e) {
@@ -188,12 +194,21 @@ export class ChatApiRepository extends ChatRepository {
           }
         }
 
-        // Return response with attachments if present
+        // Return response with attachments and/or metadata if present
         if (attachments && attachments.length > 0) {
           console.log('🎨 Returning response with attachments:', attachments);
           return {
             content: fullResponse,
-            attachments: attachments
+            attachments: attachments,
+            metadata: metadata
+          };
+        }
+
+        // Return metadata if available even without attachments
+        if (metadata) {
+          return {
+            content: fullResponse,
+            metadata: metadata
           };
         }
 

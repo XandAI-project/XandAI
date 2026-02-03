@@ -173,10 +173,11 @@ export class ChatController {
         })}\n\n`);
       }
 
-      // Send completion message with session ID so frontend can track conversation
+      // Send completion message with session ID and metadata so frontend can track conversation and display metrics
       res.write(`data: ${JSON.stringify({ 
         done: true, 
-        sessionId: result?.sessionId 
+        sessionId: result?.sessionId,
+        metadata: result?.metadata
       })}\n\n`);
       res.end();
     } catch (error) {

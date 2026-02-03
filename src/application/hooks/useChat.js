@@ -201,6 +201,7 @@ export const useChat = () => {
       console.log('📩 Streaming completed:', response);
       const assistantContent = response.assistantMessage?.content || streamedContent || '';
       const attachments = response.assistantMessage?.attachments || [];
+      const metadata = response.assistantMessage?.metadata || response.metadata || null;
 
       // Final update to ensure message is complete with all data
       const finalMessage = new Message(
@@ -215,6 +216,11 @@ export const useChat = () => {
       if (attachments.length > 0) {
         finalMessage.attachments = [...attachments];
         console.log('🎨 Added attachments to final message:', attachments);
+      }
+
+      if (metadata) {
+        finalMessage.metadata = metadata;
+        console.log('📊 Added metrics to final message:', metadata);
       }
 
       setMessages(prev => {

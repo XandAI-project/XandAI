@@ -82,15 +82,18 @@ export class ChatService {
       const assistantResponse = await this.chatRepository.sendMessage(messageContent, onToken);
       console.log('Resposta do backend recebida:', assistantResponse);
       
-      // Handle response - can be string or object with attachments
-      let content, attachments;
+      // Handle response - can be string or object with attachments and metadata
+      let content, attachments, metadata;
       if (typeof assistantResponse === 'object' && assistantResponse.content !== undefined) {
         content = assistantResponse.content;
         attachments = assistantResponse.attachments;
+        metadata = assistantResponse.metadata;
         console.log('🎨 Response contains attachments:', attachments);
+        console.log('📊 Response contains metadata:', metadata);
       } else {
         content = assistantResponse;
         attachments = null;
+        metadata = null;
       }
       
       // Cria a mensagem do assistente
@@ -101,15 +104,23 @@ export class ChatService {
         assistantMessage.attachments = [...attachments]; // Create new array
         console.log('🎨 ChatService: Added attachments to message:', JSON.stringify(assistantMessage.attachments));
       }
+
+      // Add metadata if present (e.g., tokens, processingTime, tokensPerSecond)
+      if (metadata) {
+        assistantMessage.metadata = metadata;
+        console.log('📊 ChatService: Added metadata to message:', metadata);
+      }
       
       console.log('🚀 ChatService: Returning assistantMessage:', {
         content: assistantMessage.content?.substring(0, 50),
         attachments: assistantMessage.attachments,
-        hasAttachments: assistantMessage.attachments?.length > 0
+        hasAttachments: assistantMessage.attachments?.length > 0,
+        metadata: assistantMessage.metadata
       });
 
       return {
-        assistantMessage
+        assistantMessage,
+        metadata // Also return metadata separately for useChat hook
       };
     } catch (error) {
       console.error('Erro ao enviar mensagem:', error);

@@ -250,7 +250,18 @@ export class ChatUseCase {
     userId: string,
     sendMessageDto: SendMessageDto,
     onToken: (token: string, fullText: string) => void
-  ): Promise<{ sessionId: string; isImageGeneration?: boolean; content?: string; attachments?: any[] }> {
+  ): Promise<{ 
+    sessionId: string; 
+    isImageGeneration?: boolean; 
+    content?: string; 
+    attachments?: any[];
+    metadata?: {
+      tokens?: number;
+      processingTime?: number;
+      tokensPerSecond?: number;
+      model?: string;
+    };
+  }> {
     // Busca o usuário para obter o system prompt e configurações LLM
     const user = await this.userRepository.findById(userId);
     const systemPrompt = user?.systemPrompt;
@@ -360,8 +371,16 @@ export class ChatUseCase {
     );
     await this.chatMessageRepository.create(assistantMessageData);
 
-    // Always return session ID
-    return { sessionId: session.id };
+    // Return session ID and metadata with metrics
+    return { 
+      sessionId: session.id,
+      metadata: {
+        tokens: aiResponse.tokens,
+        processingTime: aiResponse.processingTime,
+        tokensPerSecond: aiResponse.tokensPerSecond,
+        model: aiResponse.model
+      }
+    };
   }
 
   /**
