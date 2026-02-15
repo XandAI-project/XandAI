@@ -13,11 +13,18 @@ XandAI is a modern and intelligent virtual assistant built with React and Materi
 - **Smooth Animations**: Enhanced transitions and visual feedback
 
 ### 🧠 AI Integration
+- **Multi-Provider Support**: Switch between Ollama and Dynamic LLM (XandRouting) backends
+- **Dynamic LLM (XandRouting)**: Production-ready inference with vLLM and llama.cpp
+  - GPU-optimized inference with vLLM
+  - GGUF quantized models with llama.cpp
+  - Intelligent model caching with TTL management
+  - Built-in HuggingFace model downloader
 - **OLLAMA Integration**: Connect with local AI models
 - **Stable Diffusion**: Generate images from text prompts
-- **Automatic Fallback**: Intelligent system that switches between OLLAMA and mock responses
+- **Automatic Fallback**: Intelligent system that switches between providers
 - **Model Selection**: Interface to choose and manage available models
 - **Real-time Status**: Visual indicators of connection and model status
+- **Flexible Configuration**: Full control over model parameters, GPU usage, and streaming
 
 ### 💬 Advanced Chat
 - **Real-time Messages**: Fluid and responsive chat interface
@@ -70,8 +77,10 @@ backend/
 ### Prerequisites
 
 - Node.js 16+ and npm/yarn
-- OLLAMA installed (optional, for local AI)
+- Docker and Docker Compose (for XandRouting backend)
+- OLLAMA installed (optional, alternative AI backend)
 - Stable Diffusion WebUI (optional, for image generation)
+- NVIDIA GPU with CUDA support (recommended for vLLM/llama.cpp GPU inference)
 
 ### Installation
 
@@ -113,6 +122,82 @@ backend/
    ```
    http://localhost:3000
    ```
+
+### Dynamic LLM Backend (XandRouting)
+
+XandAI now supports the **[XandRouting](https://github.com/XandAI-project/XandRouting)** backend - a production-ready LLM inference server with multi-backend support (vLLM and llama.cpp), intelligent caching, and OpenAI-compatible API.
+
+#### Why Use XandRouting?
+
+- **Multi-Backend Support**: Switch between vLLM (GPU-optimized) and llama.cpp (GGUF models) via API
+- **Intelligent Caching**: Automatic TTL-based model management - models stay loaded for fast responses
+- **Zero Configuration**: Load models on-demand via API, no configuration files needed
+- **Built-in Model Downloader**: Download models directly from HuggingFace
+- **OpenAI Compatible**: Drop-in replacement for OpenAI API
+
+#### Setup XandRouting Backend
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/XandAI-project/XandRouting.git
+   cd XandRouting
+   ```
+
+2. **Start with Docker Compose**
+   ```bash
+   docker compose up -d
+   ```
+   
+   The server will start on `http://localhost:8080` (or your configured IP).
+
+3. **Download a model** (example with GGUF quantized model)
+   ```bash
+   curl -X POST http://192.168.0.5:8080/v1/models/download \
+     -H "Content-Type: application/json" \
+     -d '{
+       "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
+       "quantization": "Q4_K_M"
+     }'
+   ```
+
+4. **Check download status**
+   ```bash
+   # Get the job_id from previous response, then:
+   curl http://192.168.0.5:8080/v1/models/download/{job_id}
+   ```
+
+5. **Configure XandAI to use XandRouting**
+   
+   Update your backend `.env` file:
+   ```env
+   DYNAMIC_LLM_BASE_URL=http://192.168.0.5:8080
+   DYNAMIC_LLM_ENABLED=true
+   ```
+
+#### Using XandRouting from XandAI
+
+Once configured, you can:
+
+- **Select Provider**: Use the Provider Selector in the chat interface
+- **Choose Backend**: Switch between vLLM and LlamaCPP
+- **Configure Models**: Set model paths and parameters
+- **Manage Models**: View loaded models, download new ones, check cache stats
+
+**Model Path Formats:**
+
+- **vLLM**: `/models/qwen3-coder-30b` (folder path)
+- **LlamaCPP**: `/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf` (file path)
+
+#### XandRouting Features
+
+- **Dynamic Model Loading**: Load any model on-demand via API request
+- **Intelligent Caching**: TTL-based automatic unloading
+- **Streaming Support**: Real-time SSE streaming responses
+- **Model Inventory**: Automatic discovery of downloaded models
+- **GPU Memory Control**: Configure `gpu_memory_utilization` for vLLM
+- **Partial GPU Offloading**: Use `n_gpu_layers` for llama.cpp mixed GPU/CPU inference
+
+For complete documentation, see the [XandRouting repository](https://github.com/XandAI-project/XandRouting).
 
 ### OLLAMA Configuration (Optional)
 
@@ -231,6 +316,7 @@ export const customTheme = createTheme({
 ## 📚 Documentation
 
 ### Complete Documentation
+- [Dynamic LLM Integration](docs/DYNAMIC_LLM_INTEGRATION.md) - XandRouting backend setup and usage guide
 - [OLLAMA Integration](docs/OLLAMA_INTEGRATION.md) - Complete OLLAMA integration guide
 - [Architecture](docs/README.md) - System architecture details
 
@@ -389,6 +475,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
+- **XandRouting** - For the powerful multi-backend LLM inference server
+- **vLLM Team** - For GPU-optimized LLM inference
+- **llama.cpp** - For efficient GGUF model support
 - **OLLAMA Team** - For the excellent local AI tool
 - **Automatic1111** - For Stable Diffusion WebUI
 - **Material-UI** - For the component system

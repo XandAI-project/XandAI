@@ -7,6 +7,7 @@ import { ChatSession } from '../../domain/entities/chat-session.entity';
 import { ChatMessage } from '../../domain/entities/chat-message.entity';
 import { OllamaService } from '../../infrastructure/services/ollama.service';
 import { StableDiffusionService } from '../../infrastructure/services/stable-diffusion.service';
+import { DynamicLLMService } from '../../infrastructure/services/dynamic-llm.service';
 import { 
   CreateChatSessionDto, 
   UpdateChatSessionDto, 
@@ -15,7 +16,9 @@ import {
   SendMessageResponseDto,
   ChatSessionResponseDto,
   ChatMessageResponseDto,
-  SearchMessagesDto
+  SearchMessagesDto,
+  ProviderType,
+  DynamicLLMBackend,
 } from '../dto/chat.dto';
 
 /**
@@ -34,6 +37,7 @@ export class ChatUseCase {
     private readonly userRepository: IUserRepository,
     private readonly ollamaService: OllamaService,
     private readonly stableDiffusionService: StableDiffusionService,
+    private readonly dynamicLLMService: DynamicLLMService,
   ) {}
 
   /**
@@ -287,8 +291,10 @@ export class ChatUseCase {
       this.logger.log(`📝 Using existing session: ${session.id}`);
     }
 
-    // Check if this is an image generation request (can't be streamed)
-    const isImageRequest = this.ollamaService.isImageGenerationRequest(sendMessageDto.content);
+    const provider = sendMessageDto.provider || ProviderType.OLLAMA;
+
+    // Check if this is an image generation request (can't be streamed, Ollama only)
+    const isImageRequest = provider === ProviderType.OLLAMA && this.ollamaService.isImageGenerationRequest(sendMessageDto.content);
     
     if (isImageRequest) {
       this.logger.log('🎨 Image generation detected in streaming endpoint - using non-streaming flow');
@@ -337,26 +343,34 @@ export class ChatUseCase {
     
     this.logger.log(`💬 [STREAMING] User message saved: "${sendMessageDto.content.substring(0, 50)}..."`);
     
-    // Constrói o contexto sem incluir a mensagem que acabou de ser salva
-    const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content, systemPrompt);
+    let aiResponse: any;
 
-    // Gera resposta com streaming
-    const aiResponse = await this.ollamaService.generateResponseWithStreaming(
-      context,
-      {
-        model: sendMessageDto.model,
-        temperature: userLlmConfig.temperature ?? sendMessageDto.temperature,
-        maxTokens: userLlmConfig.maxTokens ?? sendMessageDto.maxTokens,
-        topK: userLlmConfig.topK,
-        topP: userLlmConfig.topP,
-        frequencyPenalty: userLlmConfig.frequencyPenalty,
-        presencePenalty: userLlmConfig.presencePenalty,
-        repeatPenalty: userLlmConfig.repeatPenalty,
-        seed: userLlmConfig.seed,
-        ollamaConfig: sendMessageDto.metadata?.ollamaConfig,
-      },
-      onToken
-    );
+    // Route to appropriate provider for streaming
+    if (provider === ProviderType.DYNAMIC_LLM && sendMessageDto.dynamicLLMConfig) {
+      this.logger.log(`🚀 [STREAMING] Using Dynamic LLM with backend: ${sendMessageDto.dynamicLLMConfig.backend}`);
+      aiResponse = await this.streamDynamicLLMResponse(sendMessageDto, messageHistory.messages, systemPrompt, userLlmConfig, onToken);
+    } else {
+      // Ollama streaming
+      const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content, systemPrompt);
+
+      // Gera resposta com streaming
+      aiResponse = await this.ollamaService.generateResponseWithStreaming(
+        context,
+        {
+          model: sendMessageDto.model,
+          temperature: userLlmConfig.temperature ?? sendMessageDto.temperature,
+          maxTokens: userLlmConfig.maxTokens ?? sendMessageDto.maxTokens,
+          topK: userLlmConfig.topK,
+          topP: userLlmConfig.topP,
+          frequencyPenalty: userLlmConfig.frequencyPenalty,
+          presencePenalty: userLlmConfig.presencePenalty,
+          repeatPenalty: userLlmConfig.repeatPenalty,
+          seed: userLlmConfig.seed,
+          ollamaConfig: sendMessageDto.metadata?.ollamaConfig,
+        },
+        onToken
+      );
+    }
 
     // Salva resposta do assistente
     const assistantMessageData = ChatMessage.createAssistantMessage(
@@ -449,14 +463,20 @@ export class ChatUseCase {
     userLlmConfig: any = {}
   ): Promise<{ content: string; metadata: any; attachments?: any[] }> {
     try {
-      // Check if this is an image generation request
-      const isImageRequest = this.ollamaService.isImageGenerationRequest(userMessage);
+      // Check if this is an image generation request (only for Ollama)
+      const provider = options.provider || ProviderType.OLLAMA;
+      const isImageRequest = provider === ProviderType.OLLAMA && this.ollamaService.isImageGenerationRequest(userMessage);
       
       if (isImageRequest) {
         return await this.handleImageGenerationRequest(userMessage, options);
       }
 
-      // Regular text response
+      // Route to appropriate provider
+      if (provider === ProviderType.DYNAMIC_LLM && options.dynamicLLMConfig) {
+        return await this.generateDynamicLLMResponse(userMessage, options, messageHistory, systemPrompt, userLlmConfig);
+      }
+
+      // Default: Ollama provider
       // Prepara o contexto da conversa incluindo histórico
       const context = this.buildConversationContext(messageHistory, userMessage, systemPrompt);
       
@@ -506,6 +526,204 @@ export class ChatUseCase {
         }
       };
     }
+  }
+
+  /**
+   * Generate response using Dynamic LLM API
+   */
+  private async generateDynamicLLMResponse(
+    userMessage: string,
+    options: SendMessageDto,
+    messageHistory: ChatMessage[] = [],
+    systemPrompt?: string,
+    userLlmConfig: any = {}
+  ): Promise<{ content: string; metadata: any; attachments?: any[] }> {
+    this.logger.log(`🚀 Using Dynamic LLM with backend: ${options.dynamicLLMConfig.backend}`);
+
+    // Build messages array for Dynamic LLM API
+    const messages = [];
+    
+    // Add system prompt if provided
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    // Add message history
+    for (const msg of messageHistory) {
+      messages.push({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      });
+    }
+
+    // Add current user message
+    messages.push({ role: 'user', content: userMessage });
+
+    // Build request for Dynamic LLM API
+    const request: any = {
+      model: options.dynamicLLMConfig.model,
+      backend: options.dynamicLLMConfig.backend,
+      messages,
+      device: options.dynamicLLMConfig.device || 'cuda',
+      ttl: options.dynamicLLMConfig.ttl || 600,
+      temperature: userLlmConfig.temperature ?? options.temperature ?? 0.7,
+      max_tokens: userLlmConfig.maxTokens ?? options.maxTokens ?? 2048,
+    };
+
+    // Add optional parameters
+    if (options.top_p !== undefined) request.top_p = options.top_p;
+    if (options.presence_penalty !== undefined) request.presence_penalty = options.presence_penalty;
+    if (options.frequency_penalty !== undefined) request.frequency_penalty = options.frequency_penalty;
+    if (options.stop) request.stop = options.stop;
+
+    // Add backend-specific parameters
+    if (options.dynamicLLMConfig.backend === DynamicLLMBackend.VLLM && options.dynamicLLMConfig.gpu_memory_utilization) {
+      request.gpu_memory_utilization = options.dynamicLLMConfig.gpu_memory_utilization;
+    }
+
+    if (options.dynamicLLMConfig.backend === DynamicLLMBackend.LLAMACPP) {
+      if (options.dynamicLLMConfig.n_gpu_layers !== undefined) {
+        request.n_gpu_layers = options.dynamicLLMConfig.n_gpu_layers;
+      }
+      if (options.dynamicLLMConfig.n_ctx) {
+        request.n_ctx = options.dynamicLLMConfig.n_ctx;
+      }
+    }
+
+    // Send request to Dynamic LLM API
+    const response = await this.dynamicLLMService.chatCompletion(request);
+
+    // Parse response (OpenAI-compatible format)
+    const content = response.choices?.[0]?.message?.content || response.content || '';
+    const model = response.model || options.dynamicLLMConfig.model;
+
+    return {
+      content,
+      metadata: {
+        model,
+        backend: options.dynamicLLMConfig.backend,
+        temperature: request.temperature,
+        usedHistory: messageHistory.length > 0,
+      },
+    };
+  }
+
+  /**
+   * Stream response using Dynamic LLM API
+   */
+  private async streamDynamicLLMResponse(
+    options: SendMessageDto,
+    messageHistory: ChatMessage[] = [],
+    systemPrompt?: string,
+    userLlmConfig: any = {},
+    onToken: (token: string, fullText: string) => void
+  ): Promise<{ content: string; metadata: any }> {
+    // Build messages array for Dynamic LLM API
+    const messages = [];
+    
+    // Add system prompt if provided
+    if (systemPrompt) {
+      messages.push({ role: 'system', content: systemPrompt });
+    }
+
+    // Add message history
+    for (const msg of messageHistory) {
+      messages.push({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      });
+    }
+
+    // Add current user message
+    messages.push({ role: 'user', content: options.content });
+
+    // Build request for Dynamic LLM API
+    const request: any = {
+      model: options.dynamicLLMConfig.model,
+      backend: options.dynamicLLMConfig.backend,
+      messages,
+      device: options.dynamicLLMConfig.device || 'cuda',
+      ttl: options.dynamicLLMConfig.ttl || 600,
+      temperature: userLlmConfig.temperature ?? options.temperature ?? 0.7,
+      max_tokens: userLlmConfig.maxTokens ?? options.maxTokens ?? 2048,
+      stream: true,
+    };
+
+    // Add optional parameters
+    if (options.top_p !== undefined) request.top_p = options.top_p;
+    if (options.presence_penalty !== undefined) request.presence_penalty = options.presence_penalty;
+    if (options.frequency_penalty !== undefined) request.frequency_penalty = options.frequency_penalty;
+    if (options.stop) request.stop = options.stop;
+
+    // Add backend-specific parameters
+    if (options.dynamicLLMConfig.backend === DynamicLLMBackend.VLLM && options.dynamicLLMConfig.gpu_memory_utilization) {
+      request.gpu_memory_utilization = options.dynamicLLMConfig.gpu_memory_utilization;
+    }
+
+    if (options.dynamicLLMConfig.backend === DynamicLLMBackend.LLAMACPP) {
+      if (options.dynamicLLMConfig.n_gpu_layers !== undefined) {
+        request.n_gpu_layers = options.dynamicLLMConfig.n_gpu_layers;
+      }
+      if (options.dynamicLLMConfig.n_ctx) {
+        request.n_ctx = options.dynamicLLMConfig.n_ctx;
+      }
+    }
+
+    // Get streaming response from Dynamic LLM API
+    const stream = await this.dynamicLLMService.chatCompletionStream(request);
+    const reader = stream.getReader();
+    const decoder = new TextDecoder();
+    
+    let fullText = '';
+    let buffer = '';
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        buffer += chunk;
+
+        // Process complete lines from buffer
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6));
+              
+              if (data.choices && data.choices[0]?.delta?.content) {
+                const token = data.choices[0].delta.content;
+                fullText += token;
+                onToken(token, fullText);
+              }
+
+              // Check if streaming is done
+              if (data.choices && data.choices[0]?.finish_reason) {
+                break;
+              }
+            } catch (e) {
+              // Ignore JSON parsing errors for incomplete chunks
+            }
+          }
+        }
+      }
+    } catch (error) {
+      this.logger.error(`Error in Dynamic LLM streaming: ${error.message}`);
+      throw error;
+    }
+
+    return {
+      content: fullText,
+      metadata: {
+        model: options.dynamicLLMConfig.model,
+        backend: options.dynamicLLMConfig.backend,
+        temperature: request.temperature,
+        usedHistory: messageHistory.length > 0,
+      },
+    };
   }
 
   /**

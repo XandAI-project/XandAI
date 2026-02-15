@@ -29,7 +29,12 @@ import {
   ChatMessageResponseDto,
   SearchMessagesDto,
 } from '../../application/dto/chat.dto';
+import {
+  ModelDownloadRequestDto,
+  ModelUnloadRequestDto,
+} from '../../application/dto/dynamic-llm.dto';
 import { JwtAuthGuard } from '../guards/jwt-auth.guard';
+import { DynamicLLMService } from '../../infrastructure/services/dynamic-llm.service';
 
 /**
  * Controller responsável pelas operações de chat
@@ -37,7 +42,10 @@ import { JwtAuthGuard } from '../guards/jwt-auth.guard';
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
 export class ChatController {
-  constructor(private readonly chatUseCase: ChatUseCase) {}
+  constructor(
+    private readonly chatUseCase: ChatUseCase,
+    private readonly dynamicLLMService: DynamicLLMService,
+  ) {}
 
   /**
    * Cria uma nova sessão de chat
@@ -311,6 +319,86 @@ export class ChatController {
       attachmentData.originalPrompt,
       attachmentData.metadata
     );
+  }
+
+  /**
+   * Get list of currently loaded models in Dynamic LLM API
+   */
+  @Get('providers/models/loaded')
+  async getLoadedModels(): Promise<any> {
+    return await this.dynamicLLMService.getLoadedModels();
+  }
+
+  /**
+   * Get model inventory (available models in /models/ directory)
+   */
+  @Get('providers/models/inventory')
+  async getModelInventory(): Promise<any> {
+    return await this.dynamicLLMService.getModelInventory();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  @Get('providers/stats')
+  async getCacheStats(): Promise<any> {
+    return await this.dynamicLLMService.getCacheStats();
+  }
+
+  /**
+   * Download a model from HuggingFace
+   */
+  @Post('providers/models/download')
+  @HttpCode(HttpStatus.CREATED)
+  async downloadModel(
+    @Body(ValidationPipe) downloadRequest: ModelDownloadRequestDto,
+  ): Promise<any> {
+    return await this.dynamicLLMService.downloadModel(downloadRequest);
+  }
+
+  /**
+   * Get download status
+   */
+  @Get('providers/models/download/:jobId')
+  async getDownloadStatus(@Param('jobId') jobId: string): Promise<any> {
+    return await this.dynamicLLMService.getDownloadStatus(jobId);
+  }
+
+  /**
+   * List all downloads
+   */
+  @Get('providers/models/downloads')
+  async listDownloads(): Promise<any> {
+    return await this.dynamicLLMService.listDownloads();
+  }
+
+  /**
+   * Cancel a download
+   */
+  @Delete('providers/models/download/:jobId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async cancelDownload(@Param('jobId') jobId: string): Promise<any> {
+    return await this.dynamicLLMService.cancelDownload(jobId);
+  }
+
+  /**
+   * Unload a specific model
+   */
+  @Post('providers/models/unload')
+  @HttpCode(HttpStatus.OK)
+  async unloadModel(
+    @Body(ValidationPipe) unloadRequest: ModelUnloadRequestDto,
+  ): Promise<any> {
+    return await this.dynamicLLMService.unloadModel(unloadRequest);
+  }
+
+  /**
+   * Unload all models
+   */
+  @Post('providers/models/unload-all')
+  @HttpCode(HttpStatus.OK)
+  async unloadAllModels(): Promise<any> {
+    return await this.dynamicLLMService.unloadAllModels();
   }
 
 }

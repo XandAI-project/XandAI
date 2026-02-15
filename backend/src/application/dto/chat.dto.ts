@@ -1,4 +1,52 @@
-import { IsString, IsOptional, IsUUID, IsIn, IsObject, IsNumber, Min, Max } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsIn, IsObject, IsNumber, Min, Max, IsEnum, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
+
+/**
+ * Provider types for LLM
+ */
+export enum ProviderType {
+  OLLAMA = 'ollama',
+  DYNAMIC_LLM = 'dynamic_llm',
+}
+
+/**
+ * Dynamic LLM backend types
+ */
+export enum DynamicLLMBackend {
+  VLLM = 'vllm',
+  LLAMACPP = 'llamacpp',
+}
+
+/**
+ * Dynamic LLM configuration
+ */
+export class DynamicLLMConfigDto {
+  @IsEnum(DynamicLLMBackend)
+  backend: DynamicLLMBackend;
+
+  @IsString()
+  model: string;
+
+  @IsOptional()
+  @IsString()
+  device?: 'cuda' | 'cpu';
+
+  @IsOptional()
+  @IsNumber()
+  ttl?: number;
+
+  @IsOptional()
+  @IsNumber()
+  gpu_memory_utilization?: number;
+
+  @IsOptional()
+  @IsNumber()
+  n_gpu_layers?: number;
+
+  @IsOptional()
+  @IsNumber()
+  n_ctx?: number;
+}
 
 /**
  * DTO para criação de sessão de chat
@@ -79,8 +127,17 @@ export class SendMessageDto {
   sessionId?: string;
 
   @IsOptional()
+  @IsEnum(ProviderType)
+  provider?: ProviderType;
+
+  @IsOptional()
   @IsString()
   model?: string;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => DynamicLLMConfigDto)
+  dynamicLLMConfig?: DynamicLLMConfigDto;
 
   @IsOptional()
   @IsNumber()
@@ -93,6 +150,28 @@ export class SendMessageDto {
   @Min(1)
   @Max(4000)
   maxTokens?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  top_p?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-2)
+  @Max(2)
+  presence_penalty?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(-2)
+  @Max(2)
+  frequency_penalty?: number;
+
+  @IsOptional()
+  @IsString({ each: true })
+  stop?: string[];
 
   @IsOptional()
   @IsObject()

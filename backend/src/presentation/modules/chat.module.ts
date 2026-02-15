@@ -12,6 +12,7 @@ import { ChatController } from '../controllers/chat.controller';
 import { AuthModule } from './auth.module';
 import { OllamaService } from '../../infrastructure/services/ollama.service';
 import { StableDiffusionService } from '../../infrastructure/services/stable-diffusion.service';
+import { DynamicLLMService } from '../../infrastructure/services/dynamic-llm.service';
 
 /**
  * Módulo de chat
@@ -26,6 +27,7 @@ import { StableDiffusionService } from '../../infrastructure/services/stable-dif
     ChatUseCase,
     OllamaService,
     StableDiffusionService,
+    DynamicLLMService,
     {
       provide: 'IUserRepository',
       useClass: UserRepository,
