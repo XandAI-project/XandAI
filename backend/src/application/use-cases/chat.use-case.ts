@@ -348,7 +348,7 @@ export class ChatUseCase {
     // Route to appropriate provider for streaming
     if (provider === ProviderType.DYNAMIC_LLM && sendMessageDto.dynamicLLMConfig) {
       this.logger.log(`🚀 [STREAMING] Using Dynamic LLM with backend: ${sendMessageDto.dynamicLLMConfig.backend}`);
-      aiResponse = await this.streamDynamicLLMResponse(sendMessageDto, messageHistory.messages, systemPrompt, userLlmConfig, onToken);
+      aiResponse = await this.streamDynamicLLMResponse(sendMessageDto, onToken, messageHistory.messages, systemPrompt, userLlmConfig);
     } else {
       // Ollama streaming
       const context = this.buildConversationContext(messageHistory.messages, sendMessageDto.content, systemPrompt);
@@ -613,10 +613,10 @@ export class ChatUseCase {
    */
   private async streamDynamicLLMResponse(
     options: SendMessageDto,
+    onToken: (token: string, fullText: string) => void,
     messageHistory: ChatMessage[] = [],
     systemPrompt?: string,
-    userLlmConfig: any = {},
-    onToken: (token: string, fullText: string) => void
+    userLlmConfig: any = {}
   ): Promise<{ content: string; metadata: any }> {
     // Build messages array for Dynamic LLM API
     const messages = [];
