@@ -31,7 +31,10 @@ import {
   WhatsApp as WhatsAppIcon
 } from '@mui/icons-material';
 import ModelSelector from './ModelSelector';
+import ProviderSelector from './ProviderSelector';
+import ModelStatusIndicator from './ModelStatusIndicator';
 import { useAuth } from '../../contexts/AuthContext';
+import { useDynamicLLM } from '../../application/hooks/useDynamicLLM';
 
 /**
  * Chat header component
@@ -56,8 +59,13 @@ const ChatHeader = ({
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const { user, logout, getFullName, getInitials } = useAuth();
+  const { config } = useDynamicLLM();
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [clearMenuAnchor, setClearMenuAnchor] = useState(null);
+
+  // Determine active provider
+  const activeProvider = localStorage.getItem('active-provider') || 'ollama';
+  const isDynamicLLM = activeProvider === 'dynamic_llm';
 
   // Bot status
   const botStatus = isTyping ? 'typing...' : 'online';
@@ -212,10 +220,29 @@ const ChatHeader = ({
           </Box>
         </Box>
 
-        {/* Model selector */}
+        {/* Provider and Model selector */}
         {!isMobile && (
-          <Box sx={{ mr: 2 }}>
-            <ModelSelector onOpenSettings={onSettings} />
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 2 }}>
+            {/* Provider selector (Ollama / Dynamic LLM) */}
+            <ProviderSelector 
+              onOpenSettings={onSettings}
+              currentProvider={activeProvider}
+              onProviderChange={(provider) => {
+                localStorage.setItem('active-provider', provider);
+                window.location.reload(); // Refresh to apply new provider
+              }}
+            />
+
+            {/* Model selector for Ollama */}
+            {!isDynamicLLM && <ModelSelector onOpenSettings={onSettings} />}
+
+            {/* Model status indicator for Dynamic LLM */}
+            {isDynamicLLM && config.model && (
+              <ModelStatusIndicator 
+                modelPath={config.model}
+                enabled={true}
+              />
+            )}
           </Box>
         )}
 

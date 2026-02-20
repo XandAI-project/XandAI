@@ -54,42 +54,98 @@ export class ChatApiRepository extends ChatRepository {
         throw new Error('Token de autenticação não encontrado');
       }
 
-      // Get Ollama config - NOTE: uses same key as OllamaApiRepository ('ollama-config')
+      // Check which provider is configured
+      const dynamicLLMConfig = JSON.parse(localStorage.getItem('dynamic-llm-config') || '{}');
       const ollamaConfig = JSON.parse(localStorage.getItem('ollama-config') || '{}');
       
-      // Log for debugging
-      console.log('🤖 Ollama config from localStorage:', ollamaConfig);
-      console.log('🤖 Selected model:', ollamaConfig.selectedModel || 'NOT SET - using default llama3.2');
+      // Determine active provider
+      const activeProvider = localStorage.getItem('active-provider') || 'ollama';
       
-      // Build ollamaConfig to send to backend
-      const ollamaConfigForBackend = {
-        enabled: ollamaConfig.enabled !== false
-      };
-      
-      // If user configured a baseUrl on frontend, send it to override backend's env var
-      if (ollamaConfig.baseUrl) {
-        ollamaConfigForBackend.baseUrl = ollamaConfig.baseUrl;
-        console.log('🔗 Using frontend-configured Ollama URL:', ollamaConfig.baseUrl);
-      }
-      
-      // Also include timeout if configured
-      if (ollamaConfig.timeout) {
-        ollamaConfigForBackend.timeout = ollamaConfig.timeout;
-      }
+      console.log('🔌 Active provider:', activeProvider);
 
-      // Use model from config or fallback to default
-      const modelToUse = ollamaConfig.selectedModel || 'llama3.2';
-      console.log('🚀 Sending message with model:', modelToUse);
+      let requestBody;
 
-      const requestBody = {
-        content: message,
-        sessionId: this.currentSessionId || null,
-        model: modelToUse,
-        temperature: 0.7,
-        metadata: {
-          ollamaConfig: ollamaConfigForBackend
+      if (activeProvider === 'dynamic_llm' && dynamicLLMConfig.model) {
+        // Use Dynamic LLM (vLLM or LlamaCPP)
+        console.log('🚀 Using Dynamic LLM with backend:', dynamicLLMConfig.provider);
+        console.log('📝 Model:', dynamicLLMConfig.model);
+
+        requestBody = {
+          content: message,
+          sessionId: this.currentSessionId || null,
+          provider: 'dynamic_llm',
+          dynamicLLMConfig: {
+            backend: dynamicLLMConfig.provider,
+            model: dynamicLLMConfig.model,
+            device: dynamicLLMConfig.device || 'cuda',
+            ttl: dynamicLLMConfig.ttl || 600,
+          },
+          temperature: dynamicLLMConfig.temperature || 0.7,
+          maxTokens: dynamicLLMConfig.max_tokens || 2048,
+        };
+
+        // Add optional completion parameters
+        if (dynamicLLMConfig.top_p !== undefined) {
+          requestBody.top_p = dynamicLLMConfig.top_p;
         }
-      };
+        if (dynamicLLMConfig.presence_penalty !== undefined) {
+          requestBody.presence_penalty = dynamicLLMConfig.presence_penalty;
+        }
+        if (dynamicLLMConfig.frequency_penalty !== undefined) {
+          requestBody.frequency_penalty = dynamicLLMConfig.frequency_penalty;
+        }
+        if (dynamicLLMConfig.stop && dynamicLLMConfig.stop.length > 0) {
+          requestBody.stop = dynamicLLMConfig.stop;
+        }
+
+        // Add backend-specific parameters
+        if (dynamicLLMConfig.provider === 'vllm' && dynamicLLMConfig.gpu_memory_utilization) {
+          requestBody.dynamicLLMConfig.gpu_memory_utilization = dynamicLLMConfig.gpu_memory_utilization;
+        }
+
+        if (dynamicLLMConfig.provider === 'llamacpp') {
+          if (dynamicLLMConfig.n_gpu_layers !== undefined) {
+            requestBody.dynamicLLMConfig.n_gpu_layers = dynamicLLMConfig.n_gpu_layers;
+          }
+          if (dynamicLLMConfig.n_ctx) {
+            requestBody.dynamicLLMConfig.n_ctx = dynamicLLMConfig.n_ctx;
+          }
+        }
+      } else {
+        // Use Ollama (default)
+        console.log('🤖 Using Ollama');
+        console.log('🤖 Selected model:', ollamaConfig.selectedModel || 'default llama3.2');
+        
+        // Build ollamaConfig to send to backend
+        const ollamaConfigForBackend = {
+          enabled: ollamaConfig.enabled !== false
+        };
+        
+        // If user configured a baseUrl on frontend, send it to override backend's env var
+        if (ollamaConfig.baseUrl) {
+          ollamaConfigForBackend.baseUrl = ollamaConfig.baseUrl;
+          console.log('🔗 Using frontend-configured Ollama URL:', ollamaConfig.baseUrl);
+        }
+        
+        // Also include timeout if configured
+        if (ollamaConfig.timeout) {
+          ollamaConfigForBackend.timeout = ollamaConfig.timeout;
+        }
+
+        // Use model from config or fallback to default
+        const modelToUse = ollamaConfig.selectedModel || 'llama3.2';
+
+        requestBody = {
+          content: message,
+          sessionId: this.currentSessionId || null,
+          provider: 'ollama',
+          model: modelToUse,
+          temperature: 0.7,
+          metadata: {
+            ollamaConfig: ollamaConfigForBackend
+          }
+        };
+      }
 
       // Use streaming endpoint if callback provided
       if (onToken) {
