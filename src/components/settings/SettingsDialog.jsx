@@ -48,12 +48,16 @@ import {
   Image as ImageIcon,
   SmartToy as SmartToyIcon,
   Psychology as PsychologyIcon,
-  Tune as TuneIcon
+  Tune as TuneIcon,
+  Storage as StorageIcon
 } from '@mui/icons-material';
 import { useOllama } from '../../application/hooks/useOllama';
+import { useDynamicLLM } from '../../application/hooks/useDynamicLLM';
 import { useStableDiffusion } from '../../application/hooks/useStableDiffusion';
 import { StableDiffusionConfig } from '../../domain/entities/StableDiffusionConfig';
 import authService from '../../services/AuthService';
+import ProviderSettingsDialog from '../chat/ProviderSettingsDialog';
+import ModelManager from '../chat/ModelManager';
 
 /**
  * OLLAMA and Stable Diffusion settings dialog
@@ -81,6 +85,14 @@ const SettingsDialog = ({ open, onClose }) => {
   } = useOllama();
 
   const {
+    config: dynamicLLMConfig,
+    loadedModels,
+    availableModels,
+    fetchLoadedModels,
+    fetchAvailableModels,
+  } = useDynamicLLM();
+
+  const {
     config: sdConfig,
     models: sdModels,
     serviceStatus: sdServiceStatus,
@@ -95,6 +107,10 @@ const SettingsDialog = ({ open, onClose }) => {
 
   // States for tab control
   const [currentTab, setCurrentTab] = useState(0);
+  
+  // Dynamic LLM dialog states
+  const [providerSettingsOpen, setProviderSettingsOpen] = useState(false);
+  const [modelManagerOpen, setModelManagerOpen] = useState(false);
 
   // Ollama states
   const [localConfig, setLocalConfig] = useState({
@@ -812,6 +828,11 @@ const SettingsDialog = ({ open, onClose }) => {
               iconPosition="start"
             />
             <Tab 
+              icon={<MemoryIcon fontSize={isMobile ? "small" : "medium"} />} 
+              label={isMobile ? "" : "Dynamic LLM"}
+              iconPosition="start"
+            />
+            <Tab 
               icon={<ImageIcon fontSize={isMobile ? "small" : "medium"} />} 
               label={isMobile ? "" : "Stable Diffusion"}
               iconPosition="start"
@@ -1359,8 +1380,129 @@ const SettingsDialog = ({ open, onClose }) => {
           </Box>
         )}
 
-        {/* Tab Panel - Stable Diffusion */}
+        {/* Tab Panel - Dynamic LLM */}
         {currentTab === 3 && (
+          <Box>
+            <Alert severity="info" sx={{ mb: 3 }}>
+              <Typography variant="body2">
+                Dynamic LLM supports vLLM and LlamaCPP backends for high-performance inference.
+                Configure model paths, GPU settings, and completion parameters.
+              </Typography>
+            </Alert>
+
+            {/* Current Configuration */}
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Current Configuration
+              </Typography>
+              
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Provider</Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {dynamicLLMConfig.provider === 'vllm' ? 'vLLM' : 'LlamaCPP'}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Device</Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {dynamicLLMConfig.device?.toUpperCase() || 'CUDA'}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Model Path</Typography>
+                    <Typography variant="body2" sx={{ fontFamily: 'monospace', wordBreak: 'break-all' }}>
+                      {dynamicLLMConfig.model || 'Not configured'}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Loaded Models</Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {loadedModels.length}
+                    </Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12} sm={6}>
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Available Models</Typography>
+                    <Typography variant="body1" fontWeight={600}>
+                      {availableModels.length}
+                    </Typography>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+
+            {/* Action Buttons */}
+            <Paper elevation={1} sx={{ p: 2, mb: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Management
+              </Typography>
+              
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <Button
+                  variant="contained"
+                  startIcon={<SettingsIcon />}
+                  onClick={() => setProviderSettingsOpen(true)}
+                  fullWidth
+                >
+                  Configure Provider & Model
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<StorageIcon />}
+                  onClick={() => setModelManagerOpen(true)}
+                  fullWidth
+                >
+                  Manage Models & Downloads
+                </Button>
+
+                <Button
+                  variant="outlined"
+                  startIcon={<RefreshIcon />}
+                  onClick={() => {
+                    fetchLoadedModels();
+                    fetchAvailableModels();
+                  }}
+                  fullWidth
+                >
+                  Refresh Model Status
+                </Button>
+              </Box>
+            </Paper>
+
+            {/* Quick Tips */}
+            <Paper elevation={1} sx={{ p: 2 }}>
+              <Typography variant="h6" gutterBottom>
+                Quick Guide
+              </Typography>
+              
+              <Typography variant="body2" paragraph>
+                <strong>vLLM:</strong> Use folder paths (e.g., <code>/models/qwen3-coder-30b</code>)
+              </Typography>
+              
+              <Typography variant="body2" paragraph>
+                <strong>LlamaCPP:</strong> Use .gguf file paths (e.g., <code>/models/qwen3-iq4xs/model.gguf</code>)
+              </Typography>
+
+              <Typography variant="caption" color="text.secondary">
+                Models are loaded automatically on first request and cached based on TTL settings.
+                Download models from HuggingFace using the Model Manager.
+              </Typography>
+            </Paper>
+          </Box>
+        )}
+
+        {/* Tab Panel - Stable Diffusion */}
+        {currentTab === 4 && (
           <Box>
             {sdError && (
               <Alert severity="error" sx={{ mb: 2 }}>
@@ -1585,6 +1727,18 @@ const SettingsDialog = ({ open, onClose }) => {
           Close
         </Button>
       </DialogActions>
+
+      {/* Dynamic LLM Provider Settings Dialog */}
+      <ProviderSettingsDialog 
+        open={providerSettingsOpen}
+        onClose={() => setProviderSettingsOpen(false)}
+      />
+
+      {/* Dynamic LLM Model Manager Dialog */}
+      <ModelManager 
+        open={modelManagerOpen}
+        onClose={() => setModelManagerOpen(false)}
+      />
     </Dialog>
   );
 };
