@@ -10,6 +10,7 @@ services:
       POSTGRES_DB: ${DB_NAME:-xandai}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     ports:
       - "5432:5432"
     healthcheck:
