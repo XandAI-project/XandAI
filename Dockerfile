@@ -8,7 +8,7 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # Accept build arguments for environment variables
-ARG REACT_APP_API_URL=http://192.168.0.5:3001
+ARG REACT_APP_API_URL=http://192.168.0.13:3001
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 
 # Copy package files

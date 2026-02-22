@@ -1,4 +1,4 @@
-# GPU Memory Troubleshooting Guide
+git a# GPU Memory Troubleshooting Guide
 
 ## Issue: Model Shows CUDA but nvidia-smi Shows No Memory Usage
 
@@ -54,7 +54,7 @@ Even though `device: "cuda"` is specified, the model may have fallen back to CPU
 **Verification:**
 ```bash
 # Test with a small inference request and monitor CPU usage
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",
@@ -84,7 +84,7 @@ For llama.cpp, you MUST explicitly set `n_gpu_layers` to use GPU:
 **Fix:**
 ```bash
 # Always specify n_gpu_layers for GPU usage
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",
@@ -166,10 +166,10 @@ Both should show your GPU. If container command fails, fix GPU access first.
 
 ```bash
 # Unload the "loaded" model
-curl -X POST http://192.168.0.5:8080/v1/models/unload-all
+curl -X POST http://192.168.0.13:8080/v1/models/unload-all
 
 # Try to load it again with GPU and watch nvidia-smi
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",
@@ -201,7 +201,7 @@ docker logs -f xandrouting-gateway-1
 
 ```bash
 # This should definitely use GPU if available
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",
@@ -223,10 +223,10 @@ curl -X POST http://192.168.0.5:8080/v1/chat/completions \
 
 ```bash
 # Unload everything first
-curl -X POST http://192.168.0.5:8080/v1/models/unload-all
+curl -X POST http://192.168.0.13:8080/v1/models/unload-all
 
 # Load with explicit GPU settings
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",
@@ -245,7 +245,7 @@ If full GPU loading fails, try partial:
 
 ```bash
 # Load only some layers on GPU (adjust based on your VRAM)
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",

@@ -50,7 +50,7 @@ services:
       SD_API_PASSWORD: ${SD_API_PASSWORD:-}
       SD_DEFAULT_MODEL: ${SD_DEFAULT_MODEL:-sd_xl_base_1.0.safetensors}
       # Dynamic LLM API (vLLM, llama.cpp)
-      DYNAMIC_LLM_BASE_URL: ${DYNAMIC_LLM_BASE_URL:-http://192.168.0.5:8080}
+      DYNAMIC_LLM_BASE_URL: ${DYNAMIC_LLM_BASE_URL:-http://192.168.0.13:8080}
       DYNAMIC_LLM_ENABLED: ${DYNAMIC_LLM_ENABLED:-true}
     ports:
       - "3001:3001"
@@ -70,7 +70,7 @@ services:
       context: .
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://192.168.0.5:3001}
+        - REACT_APP_API_URL=${REACT_APP_API_URL:-http://192.168.0.13:3001}
     container_name: xandai-frontend
     restart: unless-stopped
     ports:

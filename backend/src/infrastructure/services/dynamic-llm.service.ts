@@ -13,7 +13,7 @@ export class DynamicLLMService {
   constructor(private readonly configService: ConfigService) {
     this.baseUrl = this.configService.get<string>(
       'DYNAMIC_LLM_BASE_URL',
-      'http://192.168.0.5:8080',
+      'http://192.168.0.13:8080',
     );
     this.logger.log(`🚀 Dynamic LLM Service initialized with base URL: ${this.baseUrl}`);
   }

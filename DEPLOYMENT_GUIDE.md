@@ -38,17 +38,17 @@ JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
 JWT_EXPIRES_IN=7d
 
 # Ollama (existing)
-OLLAMA_BASE_URL=http://192.168.0.5:11434
+OLLAMA_BASE_URL=http://192.168.0.13:11434
 
 # Dynamic LLM API (NEW)
-DYNAMIC_LLM_BASE_URL=http://192.168.0.5:8080
+DYNAMIC_LLM_BASE_URL=http://192.168.0.13:8080
 DYNAMIC_LLM_ENABLED=true
 
 # API Base URL for Frontend
-REACT_APP_API_URL=http://192.168.0.5:3001
+REACT_APP_API_URL=http://192.168.0.13:3001
 
 # Stable Diffusion (existing)
-STABLE_DIFFUSION_API_URL=http://192.168.0.5:7860
+STABLE_DIFFUSION_API_URL=http://192.168.0.13:7860
 STABLE_DIFFUSION_ENABLED=true
 ```
 
@@ -78,10 +78,10 @@ docker compose ps
 
 ```powershell
 # Check if XandRouting is accessible
-curl http://192.168.0.5:8080/health
+curl http://192.168.0.13:8080/health
 
 # Or in PowerShell
-Invoke-WebRequest -Uri http://192.168.0.5:8080/health
+Invoke-WebRequest -Uri http://192.168.0.13:8080/health
 ```
 
 **Expected Response**: `{"status":"healthy"}` or similar
@@ -99,7 +99,7 @@ docker compose up -d
 
 Open browser and navigate to:
 - **Local**: http://localhost
-- **Network**: http://192.168.0.5
+- **Network**: http://192.168.0.13
 
 **First Time**:
 1. Create account or login
@@ -114,7 +114,7 @@ Open browser and navigate to:
 3. Verify you get a response
 4. Check streaming works
 
-**If Issues**: Check Ollama is running at http://192.168.0.5:11434
+**If Issues**: Check Ollama is running at http://192.168.0.13:11434
 
 ---
 
@@ -277,7 +277,7 @@ docker compose logs frontend
 
 ```powershell
 # Test connectivity
-curl http://192.168.0.5:8080/health
+curl http://192.168.0.13:8080/health
 
 # Check if running
 docker ps | grep xandrouting
@@ -301,7 +301,7 @@ docker compose up -d
 
 3. Check API response:
    ```bash
-   curl http://192.168.0.5:8080/models/inventory
+   curl http://192.168.0.13:8080/models/inventory
    ```
 
 ### GPU Not Being Used
@@ -426,8 +426,8 @@ docker compose logs -f
 nvidia-smi
 
 # Test API endpoints
-curl http://192.168.0.5:8080/health
-curl http://192.168.0.5:3001/api/v1/health
+curl http://192.168.0.13:8080/health
+curl http://192.168.0.13:3001/api/v1/health
 ```
 
 ---

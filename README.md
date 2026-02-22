@@ -152,7 +152,7 @@ XandAI now supports the **[XandRouting](https://github.com/XandAI-project/XandRo
 
 3. **Download a model** (example with GGUF quantized model)
    ```bash
-   curl -X POST http://192.168.0.5:8080/v1/models/download \
+   curl -X POST http://192.168.0.13:8080/v1/models/download \
      -H "Content-Type: application/json" \
      -d '{
        "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
@@ -163,14 +163,14 @@ XandAI now supports the **[XandRouting](https://github.com/XandAI-project/XandRo
 4. **Check download status**
    ```bash
    # Get the job_id from previous response, then:
-   curl http://192.168.0.5:8080/v1/models/download/{job_id}
+   curl http://192.168.0.13:8080/v1/models/download/{job_id}
    ```
 
 5. **Configure XandAI to use XandRouting**
    
    Update your backend `.env` file:
    ```env
-   DYNAMIC_LLM_BASE_URL=http://192.168.0.5:8080
+   DYNAMIC_LLM_BASE_URL=http://192.168.0.13:8080
    DYNAMIC_LLM_ENABLED=true
    ```
 

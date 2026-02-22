@@ -220,7 +220,7 @@ docker compose up -d
 
 ```env
 # XandAI Backend (.env)
-DYNAMIC_LLM_BASE_URL=http://192.168.0.5:8080
+DYNAMIC_LLM_BASE_URL=http://192.168.0.13:8080
 DYNAMIC_LLM_ENABLED=true
 ```
 
@@ -378,7 +378,7 @@ See `docs/DYNAMIC_LLM_INTEGRATION.md` for:
 ### Immediate Testing
 1. Build Docker images: `docker compose build`
 2. Start services: `docker compose up -d`
-3. Access UI: `http://localhost` or `http://192.168.0.5`
+3. Access UI: `http://localhost` or `http://192.168.0.13`
 4. Test Ollama (existing functionality)
 5. Switch to Dynamic LLM
 6. Configure vLLM or LlamaCPP

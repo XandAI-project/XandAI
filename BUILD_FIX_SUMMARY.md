@@ -133,7 +133,7 @@ docker logs xandrouting-gateway-1
 docker exec xandrouting-gateway-1 nvidia-smi
 
 # Test model loading with explicit GPU settings
-curl -X POST http://192.168.0.5:8080/v1/chat/completions \
+curl -X POST http://192.168.0.13:8080/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen3-iq4xs/Qwen3-Coder-30B-A3B-Instruct-IQ4_XS.gguf",

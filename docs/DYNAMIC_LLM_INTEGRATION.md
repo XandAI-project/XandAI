@@ -38,7 +38,7 @@ The server will start on `http://localhost:8080` (default) or your configured IP
 #### Option A: GGUF Quantized Model (Recommended for most users)
 
 ```bash
-curl -X POST http://192.168.0.5:8080/v1/models/download \
+curl -X POST http://192.168.0.13:8080/v1/models/download \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
@@ -49,7 +49,7 @@ curl -X POST http://192.168.0.5:8080/v1/models/download \
 #### Option B: Full Model for vLLM
 
 ```bash
-curl -X POST http://192.168.0.5:8080/v1/models/download \
+curl -X POST http://192.168.0.13:8080/v1/models/download \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct",
@@ -61,7 +61,7 @@ curl -X POST http://192.168.0.5:8080/v1/models/download \
 
 ```bash
 # Get job_id from the download response, then check status
-curl http://192.168.0.5:8080/v1/models/download/{job_id}
+curl http://192.168.0.13:8080/v1/models/download/{job_id}
 ```
 
 Wait until `status: "completed"` before using the model.
@@ -72,7 +72,7 @@ Update `backend/.env` or `backend/env.example`:
 
 ```env
 # Dynamic LLM API Configuration
-DYNAMIC_LLM_BASE_URL=http://192.168.0.5:8080
+DYNAMIC_LLM_BASE_URL=http://192.168.0.13:8080
 DYNAMIC_LLM_ENABLED=true
 ```
 
@@ -149,7 +149,7 @@ npm run start:dev
 Check which models are currently in memory:
 
 ```bash
-curl http://192.168.0.5:8080/v1/models/loaded
+curl http://192.168.0.13:8080/v1/models/loaded
 ```
 
 ### View Available Models
@@ -157,7 +157,7 @@ curl http://192.168.0.5:8080/v1/models/loaded
 See all downloaded models:
 
 ```bash
-curl http://192.168.0.5:8080/v1/models/inventory
+curl http://192.168.0.13:8080/v1/models/inventory
 ```
 
 ### Unload a Model
@@ -165,7 +165,7 @@ curl http://192.168.0.5:8080/v1/models/inventory
 Free up memory by unloading a specific model:
 
 ```bash
-curl -X POST http://192.168.0.5:8080/v1/models/unload \
+curl -X POST http://192.168.0.13:8080/v1/models/unload \
   -H "Content-Type: application/json" \
   -d '{
     "model": "/models/qwen2.5-coder-7b",
@@ -177,7 +177,7 @@ curl -X POST http://192.168.0.5:8080/v1/models/unload \
 ### Unload All Models
 
 ```bash
-curl -X POST http://192.168.0.5:8080/v1/models/unload-all
+curl -X POST http://192.168.0.13:8080/v1/models/unload-all
 ```
 
 ---
@@ -328,7 +328,7 @@ import requests
 
 # Send chat completion
 response = requests.post(
-    'http://192.168.0.5:8080/v1/chat/completions',
+    'http://192.168.0.13:8080/v1/chat/completions',
     json={
         'model': '/models/qwen2.5-coder-7b-instruct-gguf/qwen2.5-coder-7b-instruct-q4_k_m.gguf',
         'backend': 'llamacpp',
@@ -349,7 +349,7 @@ print(result['choices'][0]['message']['content'])
 ### JavaScript/Node.js
 
 ```javascript
-const response = await fetch('http://192.168.0.5:8080/v1/chat/completions', {
+const response = await fetch('http://192.168.0.13:8080/v1/chat/completions', {
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify({
